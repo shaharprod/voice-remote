@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>שליטה קולית - Voice Remote</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎤 שליטה קולית</h1>
+            <p>שליטה במכשירים באמצעות קול</p>
+        </header>
+
+        <div class="main-content">
+            <!-- אזור שליטה קולית -->
+            <section class="voice-control">
+                <div class="voice-status">
+                    <button id="startListening" class="mic-btn">
+                        <span class="mic-icon">🎤</span>
+                        <span>התחל האזנה</span>
+                    </button>
+                    <div id="voiceFeedback" class="voice-feedback"></div>
+                    <div id="transcript" class="transcript"></div>
+                </div>
+            </section>
+
+            <!-- ניהול מכשירים -->
+            <section class="devices-section">
+                <h2>מכשירים</h2>
+                <button id="addDeviceBtn" class="btn-primary">+ הוסף מכשיר</button>
+                <div id="devicesList" class="devices-list"></div>
+            </section>
+
+            <!-- סריקת IR -->
+            <section class="ir-scan-section">
+                <h2>סריקת אינפרא אדום</h2>
+                <div class="ir-controls">
+                    <button id="startIRScan" class="btn-secondary">🔍 התחל סריקה</button>
+                    <button id="stopIRScan" class="btn-secondary" style="display:none;">⏹ עצור סריקה</button>
+                    <div id="irStatus" class="status-message"></div>
+                </div>
+                <div id="irButtons" class="ir-buttons"></div>
+            </section>
+
+            <!-- הגדרות התחברות -->
+            <section class="connection-section">
+                <h2>התחברויות</h2>
+                <div class="connection-tabs">
+                    <button class="tab-btn active" data-tab="wifi">WiFi</button>
+                    <button class="tab-btn" data-tab="bluetooth">Bluetooth</button>
+                    <button class="tab-btn" data-tab="ir">IR</button>
+                </div>
+                <div id="connectionContent" class="connection-content">
+                    <div class="tab-panel active" id="wifi-panel">
+                        <h3>WiFi</h3>
+                        <input type="text" id="wifiSSID" placeholder="שם רשת WiFi">
+                        <input type="password" id="wifiPassword" placeholder="סיסמה">
+                        <button class="btn-primary" onclick="connectWiFi()">התחבר</button>
+                        <div id="wifiStatus" class="status-message"></div>
+                    </div>
+                    <div class="tab-panel" id="bluetooth-panel">
+                        <h3>Bluetooth</h3>
+                        <button class="btn-primary" onclick="scanBluetooth()">סרוק מכשירים</button>
+                        <div id="bluetoothDevices" class="devices-list"></div>
+                        <div id="bluetoothStatus" class="status-message"></div>
+                    </div>
+                    <div class="tab-panel" id="ir-panel">
+                        <h3>IR (אינפרא אדום)</h3>
+                        <p>התחבר למכשיר IR דרך USB או Bluetooth</p>
+                        <button class="btn-primary" onclick="connectIR()">התחבר למכשיר IR</button>
+                        <div id="irConnectionStatus" class="status-message"></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- מודל הוספת מכשיר -->
+    <div id="deviceModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>הוסף מכשיר חדש</h2>
+            <form id="deviceForm">
+                <label>שם מכשיר:</label>
+                <input type="text" id="deviceName" required>
+                
+                <label>סוג מכשיר:</label>
+                <select id="deviceType" required>
+                    <option value="tv">טלוויזיה</option>
+                    <option value="ac">מזגן</option>
+                    <option value="audio">מערכת שמע</option>
+                    <option value="light">תאורה</option>
+                    <option value="other">אחר</option>
+                </select>
+                
+                <label>סוג התחברות:</label>
+                <select id="connectionType" required>
+                    <option value="ir">IR (אינפרא אדום)</option>
+                    <option value="wifi">WiFi</option>
+                    <option value="bluetooth">Bluetooth</option>
+                </select>
+                
+                <label>כתובת IP (אם WiFi):</label>
+                <input type="text" id="deviceIP" placeholder="192.168.1.1">
+                
+                <button type="submit" class="btn-primary">שמור</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+
