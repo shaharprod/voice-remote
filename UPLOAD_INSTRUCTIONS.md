@@ -39,11 +39,21 @@ git push -u origin main
 
 ## לאחר העלאה - הפעלת GitHub Pages:
 
+**חשוב:** ודא שהקבצים הועלו ל-GitHub לפני הפעלת Pages!
+
 1. לך ל: https://github.com/shaharprod/voice-remote/settings/pages
-2. תחת "Source" בחר: **Deploy from a branch**
-3. Branch: **main**, Folder: **/ (root)**
-4. לחץ **Save**
+2. תחת **"Source"** או **"Build and deployment"**:
+   - בחר **Branch** (או **main branch**)
+   - Branch: **main** (או **master**)
+   - Folder: **/ (root)** או **/**
+3. לחץ **Save**
+4. חכה כמה דקות עד שהאתר יעלה
 5. האפליקציה תהיה זמינה ב: **https://shaharprod.github.io/voice-remote**
+
+**אם אין אפשרות לבחור branch:**
+- ודא שהקבצים הועלו ל-GitHub (יש commit ב-repository)
+- רענן את הדף
+- אם עדיין לא עובד, נסה דרך Actions > New workflow > Static HTML
 
 ## הערות:
 

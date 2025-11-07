@@ -15,10 +15,12 @@
 
 ### דרך GitHub Pages
 
-1. העלה את הקבצים ל-GitHub repository
+1. העלה את הקבצים ל-GitHub repository (ראה `UPLOAD_INSTRUCTIONS.md`)
 2. עבור ל-Settings > Pages
-3. בחר branch ו-folder
-4. האפליקציה תהיה זמינה בכתובת: `https://[username].github.io/[repository-name]`
+3. תחת "Source" בחר Branch: **main** (או **master**)
+4. Folder: **/ (root)**
+5. לחץ Save
+6. האפליקציה תהיה זמינה בכתובת: `https://shaharprod.github.io/voice-remote`
 
 ### הפעלה מקומית
 
