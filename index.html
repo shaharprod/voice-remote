@@ -29,8 +29,60 @@
             <!-- ניהול מכשירים -->
             <section class="devices-section">
                 <h2>מכשירים</h2>
-                <button id="addDeviceBtn" class="btn-primary">+ הוסף מכשיר</button>
+                <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                    <button id="addDeviceBtn" class="btn-primary">+ הוסף מכשיר</button>
+                    <button id="autoScanBtn" class="btn-secondary" onclick="startAutoScan()">🔍 סריקה אוטומטית (כל החיבורים)</button>
+                    <button class="btn-secondary" onclick="autoScanWiFi()">📶 סריקת WiFi</button>
+                    <button class="btn-secondary" onclick="autoScanBluetooth()">🔵 סריקת Bluetooth</button>
+                    <button class="btn-secondary" onclick="autoScanUSB()">🔌 סריקת USB</button>
+                    <button class="btn-secondary" onclick="autoScanIR()">🔴 סריקת IR</button>
+                </div>
+                <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                    <button class="btn-primary" onclick="saveDevicesToFile()">💾 שמור מכשירים</button>
+                    <button class="btn-primary" onclick="loadDevicesFromFile()">📂 טען מכשירים</button>
+                    <button class="btn-secondary" onclick="exportDevices()">📤 ייצא מכשירים</button>
+                    <button class="btn-secondary" onclick="importDevices()">📥 ייבא מכשירים</button>
+                </div>
                 <div id="devicesList" class="devices-list"></div>
+            </section>
+
+            <!-- סצנות קבועות -->
+            <section class="scenes-section">
+                <h2>🎬 סצנות קבועות</h2>
+                <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                    <button id="addSceneBtn" class="btn-primary">+ צור סצנה חדשה</button>
+                    <button class="btn-primary" onclick="saveScenesToFile()">💾 שמור סצנות</button>
+                    <button class="btn-primary" onclick="loadScenesFromFile()">📂 טען סצנות</button>
+                    <button class="btn-secondary" onclick="exportScenes()">📤 ייצא סצנות</button>
+                    <button class="btn-secondary" onclick="importScenes()">📥 ייבא סצנות</button>
+                </div>
+                <div id="scenesList" class="devices-list"></div>
+            </section>
+
+            <!-- טמפלטים מוכנים -->
+            <section class="templates-section">
+                <h2>📋 טמפלטים מוכנים</h2>
+                <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                    <input type="text" id="templateSearch" placeholder="🔍 חיפוש טמפלט..." style="flex: 1; min-width: 200px; padding: 10px; border-radius: 8px; border: 2px solid #ddd;">
+                    <select id="templateCategoryFilter" style="padding: 10px; border-radius: 8px; border: 2px solid #ddd;">
+                        <option value="">כל הקטגוריות</option>
+                        <option value="tv">📺 טלוויזיות</option>
+                        <option value="ac">❄️ מזגנים</option>
+                        <option value="audio">🔊 מערכות שמע</option>
+                        <option value="light">💡 תאורה</option>
+                        <option value="streamer">📱 סטרימרים</option>
+                        <option value="camera">📷 מצלמות</option>
+                        <option value="fan">🌀 מאווררים</option>
+                        <option value="blinds">🪟 תריסים</option>
+                        <option value="door">🚪 דלתות</option>
+                        <option value="security">🔒 אבטחה</option>
+                        <option value="heater">🔥 תנורים</option>
+                        <option value="projector">📽️ מקרנים</option>
+                        <option value="smart_hub">🏠 Smart Hubs</option>
+                    </select>
+                    <button class="btn-primary" onclick="loadAllTemplates()">🔄 רענן טמפלטים</button>
+                </div>
+                <div id="templatesList" class="devices-list"></div>
             </section>
 
             <!-- סריקת IR -->
@@ -51,6 +103,8 @@
                     <button class="tab-btn active" data-tab="wifi">WiFi</button>
                     <button class="tab-btn" data-tab="bluetooth">Bluetooth</button>
                     <button class="tab-btn" data-tab="usb">USB</button>
+                    <button class="tab-btn" data-tab="qr">QR Code</button>
+                    <button class="tab-btn" data-tab="auto">זיהוי אוטומטי</button>
                     <button class="tab-btn" data-tab="ir">IR</button>
                 </div>
                 <div id="connectionContent" class="connection-content">
@@ -78,6 +132,26 @@
                             <div id="usbDeviceDetails"></div>
                         </div>
                     </div>
+                    <div class="tab-panel" id="qr-panel">
+                        <h3>📱 QR Code</h3>
+                        <p>סרוק QR Code מהמכשיר שלך</p>
+                        <button class="btn-primary" onclick="scanQRCode()" id="startQRScanBtn">📷 סרוק QR Code</button>
+                        <button class="btn-secondary" onclick="stopQRScanning()" id="stopQRScanBtn" style="display:none;">⏹ עצור סריקה</button>
+                        <div id="qrPreview" style="margin: 20px 0; text-align: center; display: none;">
+                            <video id="qrVideo" width="300" height="300" style="border-radius: 10px; display: none;"></video>
+                            <canvas id="qrCanvas" style="display: none;"></canvas>
+                        </div>
+                        <input type="text" id="qrCodeInput" placeholder="או הזן קוד QR ידנית" style="width: 100%; margin-top: 10px; padding: 12px; border-radius: 8px; border: 2px solid #ddd;">
+                        <button class="btn-secondary" onclick="connectQRCode()" style="margin-top: 10px;">התחבר עם קוד</button>
+                        <div id="qrStatus" class="status-message"></div>
+                    </div>
+                    <div class="tab-panel" id="auto-panel">
+                        <h3>🤖 זיהוי אוטומטי</h3>
+                        <p>זיהוי אוטומטי של מכשירים ברשת</p>
+                        <button class="btn-primary" onclick="autoDetectDevices()">🔍 התחל זיהוי אוטומטי</button>
+                        <div id="autoDetectStatus" class="status-message"></div>
+                        <div id="autoDetectedDevices" class="devices-list" style="margin-top: 20px;"></div>
+                    </div>
                     <div class="tab-panel" id="ir-panel">
                         <h3>IR (אינפרא אדום)</h3>
                         <p>התחבר למכשיר IR דרך USB או Bluetooth</p>
@@ -89,6 +163,33 @@
         </div>
     </div>
 
+    <!-- מודל יצירת סצנה -->
+    <div id="sceneModal" class="modal">
+        <div class="modal-content">
+            <span class="close-scene">&times;</span>
+            <h2>🎬 צור סצנה חדשה</h2>
+            <form id="sceneForm">
+                <label>שם סצנה:</label>
+                <input type="text" id="sceneName" placeholder="למשל: סלון, שינה, עבודה" required>
+
+                <label>תיאור:</label>
+                <input type="text" id="sceneDescription" placeholder="תיאור קצר של הסצנה">
+
+                <label>בחר מכשירים לסצנה:</label>
+                <div id="sceneDevicesList" style="max-height: 200px; overflow-y: auto; border: 2px solid #ddd; border-radius: 8px; padding: 10px; margin: 10px 0;">
+                    <!-- יטען דינמית -->
+                </div>
+
+                <label>פעולות לכל מכשיר:</label>
+                <div id="sceneActionsList" style="max-height: 300px; overflow-y: auto; border: 2px solid #ddd; border-radius: 8px; padding: 10px; margin: 10px 0;">
+                    <!-- יטען דינמית -->
+                </div>
+
+                <button type="submit" class="btn-primary">שמור סצנה</button>
+            </form>
+        </div>
+    </div>
+
     <!-- מודל הוספת מכשיר -->
     <div id="deviceModal" class="modal">
         <div class="modal-content">
@@ -97,27 +198,46 @@
             <form id="deviceForm">
                 <label>שם מכשיר:</label>
                 <input type="text" id="deviceName" required>
-                
+
                 <label>סוג מכשיר:</label>
                 <select id="deviceType" required>
-                    <option value="tv">טלוויזיה</option>
-                    <option value="ac">מזגן</option>
-                    <option value="audio">מערכת שמע</option>
-                    <option value="light">תאורה</option>
-                    <option value="other">אחר</option>
+                    <option value="tv">📺 טלוויזיה</option>
+                    <option value="ac">❄️ מזגן</option>
+                    <option value="audio">🔊 מערכת שמע</option>
+                    <option value="light">💡 תאורה</option>
+                    <option value="streamer">📱 סטרימר (Apple TV, Chromecast)</option>
+                    <option value="camera">📷 מצלמה</option>
+                    <option value="fan">🌀 מאוורר</option>
+                    <option value="blinds">🪟 תריסים</option>
+                    <option value="door">🚪 דלתות</option>
+                    <option value="security">🔒 מערכת אבטחה</option>
+                    <option value="heater">🔥 תנור</option>
+                    <option value="projector">📽️ מקרן</option>
+                    <option value="smart_hub">🏠 Smart Hub</option>
+                    <option value="other">⚙️ אחר</option>
                 </select>
-                
+
                 <label>סוג התחברות:</label>
                 <select id="connectionType" required>
-                    <option value="ir">IR (אינפרא אדום)</option>
-                    <option value="wifi">WiFi</option>
-                    <option value="bluetooth">Bluetooth</option>
-                    <option value="usb">USB</option>
+                    <option value="ir">🔴 IR (אינפרא אדום)</option>
+                    <option value="wifi">📶 WiFi</option>
+                    <option value="bluetooth">🔵 Bluetooth</option>
+                    <option value="usb">🔌 USB</option>
+                    <option value="qr">📱 QR Code</option>
+                    <option value="auto">🤖 זיהוי אוטומטי</option>
+                    <option value="code">🔢 קוד מספרי</option>
+                    <option value="nfc">📲 NFC</option>
                 </select>
-                
+
                 <label>כתובת IP (אם WiFi):</label>
                 <input type="text" id="deviceIP" placeholder="192.168.1.1">
-                
+
+                <label>קוד QR או מספר (אם QR/Code):</label>
+                <input type="text" id="deviceCode" placeholder="QR Code או קוד מספרי">
+
+                <label>זיהוי אוטומטי:</label>
+                <input type="checkbox" id="autoDetect"> אפשר זיהוי אוטומטי
+
                 <button type="submit" class="btn-primary">שמור</button>
             </form>
         </div>

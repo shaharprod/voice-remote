@@ -29,7 +29,7 @@ echo ✅ קבצים נוספו
 echo.
 
 echo [3/6] יוצר commit...
-git commit -m "Add USB support and GitHub Pages deployment"
+git commit -m "Add 100 device templates with IR codes + Improve USB device detection"
 if %errorlevel% neq 0 (
     echo ⚠️  אין שינויים חדשים או שגיאה ב-commit
 )
@@ -49,6 +49,14 @@ if %errorlevel% neq 0 (
 )
 echo.
 
+echo [5.5/6] מוריד שינויים מה-remote (pull)...
+git pull origin main --no-rebase
+if %errorlevel% neq 0 (
+    echo ⚠️  שגיאה ב-pull, מנסה rebase...
+    git pull origin main --rebase
+)
+echo.
+
 echo [6/6] מעלה ל-GitHub (push)...
 git branch -M main
 git push -u origin main
@@ -57,7 +65,7 @@ if %errorlevel% neq 0 (
     echo ⚠️  אם יש שגיאה, ייתכן שצריך:
     echo 1. להתחבר ל-GitHub (username/password)
     echo 2. להשתמש ב-Personal Access Token במקום סיסמה
-    echo 3. לבדוק שהריפוזיטורי קיים ב-GitHub
+    echo 3. לפתור קונפליקטים ידנית: git pull, ואז git push
 ) else (
     echo.
     echo ========================================
