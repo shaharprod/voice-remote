@@ -5,6 +5,7 @@ let isListening = false;
 let recognition = null;
 let irScanning = false;
 let learnedIRButtons = JSON.parse(localStorage.getItem('irButtons')) || {};
+let usbDevice = null; // מכשיר USB מחובר
 
 // אתחול
 document.addEventListener('DOMContentLoaded', () => {
@@ -12,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadDevices();
     setupEventListeners();
     loadIRButtons();
+    reconnectUSB(); // ניסיון להתחבר למכשיר USB שמור
 });
 
 // אתחול זיהוי קול
@@ -198,18 +200,32 @@ function sendCommand(command, value = null, device = null) {
         case 'bluetooth':
             sendBluetoothCommand(targetDevice, command, value);
             break;
+        case 'usb':
+            sendUSBCommand(command, value);
+            break;
     }
 }
 
 // שליחת פקודת IR
-function sendIRCommand(device, command, value) {
+async function sendIRCommand(device, command, value) {
     const buttonKey = `${device.id}_${command}${value ? '_' + value : ''}`;
     const irCode = learnedIRButtons[buttonKey];
     
     if (irCode) {
         console.log('שליחת קוד IR:', irCode);
-        // כאן תהיה שליחה אמיתית למכשיר IR
+        
+        // אם יש מכשיר USB מחובר, שלח דרך USB
+        if (usbDevice) {
+            const success = await sendUSBCommand('IR_SEND', irCode);
+            if (success) {
+                showFeedback('✅ פקודת IR נשלחה דרך USB');
+                return;
+            }
+        }
+        
+        // כאן תהיה שליחה אמיתית למכשיר IR דרך Bluetooth או אחר
         // לדוגמה: sendToIRDevice(irCode);
+        showFeedback('⚠️ אין מכשיר USB מחובר. התחבר דרך USB');
     } else {
         console.log('קוד IR לא נמצא, יש לסרוק תחילה');
         showFeedback('⚠️ קוד IR לא נמצא. יש לסרוק תחילה');
@@ -356,7 +372,8 @@ function getConnectionTypeName(type) {
     const names = {
         'ir': 'IR',
         'wifi': 'WiFi',
-        'bluetooth': 'Bluetooth'
+        'bluetooth': 'Bluetooth',
+        'usb': 'USB'
     };
     return names[type] || type;
 }
@@ -520,14 +537,156 @@ function addBluetoothDevice(device) {
     container.appendChild(div);
 }
 
+// USB Connection
+async function connectUSB() {
+    if (!navigator.usb) {
+        showStatus('usbStatus', '❌ הדפדפן שלך לא תומך ב-WebUSB API. השתמש ב-Chrome או Edge', 'error');
+        return;
+    }
+    
+    try {
+        showStatus('usbStatus', '🔍 מחפש מכשיר USB...', 'info');
+        
+        // בקשת גישה למכשיר USB
+        // כאן תוכל להוסיף filters ספציפיים למכשיר IR שלך
+        usbDevice = await navigator.usb.requestDevice({
+            filters: [
+                // דוגמה: מכשיר IR נפוץ
+                { vendorId: 0x0bda }, // Realtek
+                { vendorId: 0x1d50 }, // OpenMoko
+                // אפשר להוסיף עוד vendor IDs לפי המכשיר שלך
+            ]
+        });
+        
+        showStatus('usbStatus', '🔌 מתחבר למכשיר...', 'info');
+        
+        // פתיחת המכשיר
+        await usbDevice.open();
+        
+        // בחירת configuration (לרוב 1)
+        await usbDevice.selectConfiguration(1);
+        
+        // claim interface (לרוב 0)
+        await usbDevice.claimInterface(0);
+        
+        showStatus('usbStatus', `✅ מחובר למכשיר: ${usbDevice.productName || 'USB Device'}`, 'success');
+        
+        // הצגת פרטי המכשיר
+        document.getElementById('usbDeviceInfo').style.display = 'block';
+        document.getElementById('usbDeviceDetails').innerHTML = `
+            <p><strong>יצרן:</strong> ${usbDevice.manufacturerName || 'לא זמין'}</p>
+            <p><strong>מודל:</strong> ${usbDevice.productName || 'לא זמין'}</p>
+            <p><strong>מספר סידורי:</strong> ${usbDevice.serialNumber || 'לא זמין'}</p>
+        `;
+        
+        // הצגת כפתור ניתוק
+        document.getElementById('disconnectUSBBtn').style.display = 'inline-block';
+        
+        // שמירה ב-localStorage
+        localStorage.setItem('usbDevice', JSON.stringify({
+            vendorId: usbDevice.vendorId,
+            productId: usbDevice.productId
+        }));
+        
+    } catch (error) {
+        if (error.name === 'NotFoundError') {
+            showStatus('usbStatus', '❌ לא נמצא מכשיר USB. ודא שהמכשיר מחובר', 'error');
+        } else if (error.name === 'SecurityError') {
+            showStatus('usbStatus', '❌ אין הרשאה לגשת למכשיר USB', 'error');
+        } else {
+            showStatus('usbStatus', `❌ שגיאה: ${error.message}`, 'error');
+        }
+        console.error('USB connection error:', error);
+    }
+}
+
+// ניתוק USB
+async function disconnectUSB() {
+    if (usbDevice) {
+        try {
+            await usbDevice.close();
+            usbDevice = null;
+            showStatus('usbStatus', '✅ מכשיר USB נותק', 'success');
+            document.getElementById('usbDeviceInfo').style.display = 'none';
+            document.getElementById('disconnectUSBBtn').style.display = 'none';
+            localStorage.removeItem('usbDevice');
+        } catch (error) {
+            showStatus('usbStatus', `❌ שגיאה בניתוק: ${error.message}`, 'error');
+        }
+    }
+}
+
+// שליחת פקודה דרך USB
+async function sendUSBCommand(command, value = null) {
+    if (!usbDevice) {
+        showFeedback('⚠️ אין מכשיר USB מחובר');
+        return false;
+    }
+    
+    try {
+        // כאן תהיה שליחת הפקודה למכשיר USB
+        // זה תלוי בפרוטוקול של המכשיר הספציפי שלך
+        
+        // דוגמה: שליחת נתונים דרך USB
+        const data = new Uint8Array([command, value || 0]);
+        
+        // שליחה ל-endpoint OUT (לרוב 1)
+        await usbDevice.transferOut(1, data);
+        
+        console.log('פקודה נשלחה דרך USB:', { command, value });
+        return true;
+    } catch (error) {
+        console.error('שגיאה בשליחת פקודת USB:', error);
+        showFeedback('❌ שגיאה בשליחת פקודה דרך USB');
+        return false;
+    }
+}
+
+// ניסיון להתחבר למכשיר USB שמור
+async function reconnectUSB() {
+    const savedDevice = localStorage.getItem('usbDevice');
+    if (savedDevice && navigator.usb) {
+        try {
+            const deviceInfo = JSON.parse(savedDevice);
+            const devices = await navigator.usb.getDevices();
+            const device = devices.find(d => 
+                d.vendorId === deviceInfo.vendorId && 
+                d.productId === deviceInfo.productId
+            );
+            
+            if (device) {
+                usbDevice = device;
+                await device.open();
+                await device.selectConfiguration(1);
+                await device.claimInterface(0);
+                
+                document.getElementById('usbDeviceInfo').style.display = 'block';
+                document.getElementById('usbDeviceDetails').innerHTML = `
+                    <p><strong>יצרן:</strong> ${device.manufacturerName || 'לא זמין'}</p>
+                    <p><strong>מודל:</strong> ${device.productName || 'לא זמין'}</p>
+                `;
+                document.getElementById('disconnectUSBBtn').style.display = 'inline-block';
+                showStatus('usbStatus', '✅ התחבר מחדש למכשיר USB', 'success');
+            }
+        } catch (error) {
+            console.error('שגיאה בהתחברות מחדש:', error);
+        }
+    }
+}
+
 // IR Connection
 function connectIR() {
     showStatus('irConnectionStatus', 'מחפש מכשיר IR...', 'info');
     
-    // כאן תהיה חיפוש מכשיר IR
-    setTimeout(() => {
-        showStatus('irConnectionStatus', '✅ מכשיר IR מחובר', 'success');
-    }, 2000);
+    // אם יש מכשיר USB, נסה להשתמש בו
+    if (usbDevice) {
+        showStatus('irConnectionStatus', '✅ משתמש במכשיר USB לחיבור IR', 'success');
+    } else {
+        // כאן תהיה חיפוש מכשיר IR דרך Bluetooth או אחר
+        setTimeout(() => {
+            showStatus('irConnectionStatus', '⚠️ אין מכשיר USB. התחבר דרך USB או Bluetooth', 'error');
+        }, 2000);
+    }
 }
 
 function showStatus(elementId, message, type) {
