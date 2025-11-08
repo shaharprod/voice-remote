@@ -632,6 +632,8 @@ async function sendIRCommand(device, command, value) {
         if (usbDevice) {
             const success = await sendUSBCommand('IR_SEND', irCode);
             if (success) {
+                // הפעלת מחוון שידור חזק יותר - וידוא שהתמסורת נשלחה
+                confirmIRTransmissionSent(irCode, device.name, command);
                 showFeedback('✅ פקודת IR נשלחה דרך USB');
                 return;
             }
@@ -708,8 +710,10 @@ async function sendIRCommand(device, command, value) {
                 }
             }
 
-            // הודעה למשתמש
+            // הודעה למשתמש + מחוון שידור
             if (irSent) {
+                // הפעלת מחוון שידור חזק יותר - וידוא שהתמסורת נשלחה
+                confirmIRTransmissionSent(irCode, device.name, command);
                 showFeedback('✅ פקודת IR נשלחה דרך IR blaster של המכשיר');
             } else {
                 // אם לא הצלחנו לשלוח, נציג הודעה עם הוראות
@@ -1426,6 +1430,65 @@ function blinkIRSendIndicator() {
             }
         }, 500);
     }
+}
+
+// וידוא שהתמסורת IR נשלחה מהנייד - מחוון חזק יותר
+function confirmIRTransmissionSent(irCode, deviceName, command) {
+    const indicator = document.getElementById('irSendIndicator');
+    if (!indicator) return;
+
+    const light = indicator.querySelector('.ir-indicator-light');
+    if (!light) return;
+
+    // הפעלת מחוון חזק - מהבהב בירוק (אישור תמסורת)
+    indicator.classList.add('active', 'transmission-confirmed');
+    light.style.background = '#2ecc71'; // ירוק - תמסורת אושרה
+    light.style.boxShadow = '0 0 30px rgba(46, 204, 113, 1), 0 0 60px rgba(46, 204, 113, 0.6)';
+    light.style.animation = 'irTransmissionConfirmed 1s ease-out';
+
+    // הוספת טקסט "נשלח"
+    let confirmText = indicator.querySelector('.transmission-confirm-text');
+    if (!confirmText) {
+        confirmText = document.createElement('div');
+        confirmText.className = 'transmission-confirm-text';
+        confirmText.textContent = '✅ נשלח';
+        confirmText.style.cssText = 'position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); font-size: 12px; font-weight: bold; color: #2ecc71; white-space: nowrap; z-index: 100;';
+        indicator.appendChild(confirmText);
+    } else {
+        confirmText.style.display = 'block';
+    }
+
+    // אנימציה חזקה - 3 פעמים מהבהב
+    let blinkCount = 0;
+    const blinkInterval = setInterval(() => {
+        blinkCount++;
+        if (blinkCount <= 3) {
+            light.style.transform = 'scale(1.3)';
+            setTimeout(() => {
+                light.style.transform = 'scale(1)';
+            }, 150);
+        } else {
+            clearInterval(blinkInterval);
+            // החזרה למצב רגיל אחרי 2 שניות
+            setTimeout(() => {
+                indicator.classList.remove('active', 'transmission-confirmed');
+                light.style.background = '#3498db';
+                light.style.boxShadow = '';
+                light.style.animation = '';
+                light.style.transform = '';
+                if (confirmText) {
+                    confirmText.style.display = 'none';
+                }
+            }, 2000);
+        }
+    }, 300);
+
+    console.log('✅ תמסורת IR אושרה - נשלחה מהנייד:', {
+        code: irCode.substring(0, 20) + '...',
+        device: deviceName,
+        command: command,
+        timestamp: new Date().toISOString()
+    });
 }
 
 // ========== הורדת GUI של שלט מקורי ==========
