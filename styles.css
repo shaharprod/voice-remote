@@ -267,6 +267,106 @@ h2 {
     margin-bottom: 20px;
 }
 
+/* מחווני IR */
+.ir-indicators {
+!important;
+    gap: 30px;
+    justify-content: center;
+    align-items: center;
+    margin: 20px 0;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+.ir-indicator-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.ir-indicator-label {
+    font-size: 0.9em;
+    font-weight: bold;
+    color: #333;
+}
+
+.ir-indicator {
+    width: 60px;
+    height: 60px;
+ 50%;
+    background: #ddd;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+.ir-indicator-light {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #999;
+    transition: all 0.3s ease;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* מחוון קליטה - מהבהב באדום */
+.receive-indicator.active .ir-indicator-light {
+    background: #e74c3c;
+    box-shadow: 0 0 20px rgba(231, 76, 60, 0.8), 0 0 40px rgba(231, 76, 60, 0.4);
+    animation: irReceiveBlink 0.5s infinite;
+}
+
+.receive-indicator.active {
+    background: rgba(231, 76, 60, 0.2);
+    border: 2px solid #e74c3c;
+}
+
+/* מחוון שידור - מהבהב בכחול */
+.send-indicator.active .ir-indicator-light {
+    background: #3498db;
+    box-shadow: 0 0 20px rgba(52, 152, 219, 0.8), 0 0 40px rgba(52, 152, 219, 0.4);
+    animation: irSendBlink 0.3s infinite;
+}
+
+.send-indicator.active {
+    background: rgba(52, 152, 219, 0.2);
+    border: 2px solid #3498db;
+}
+
+/* אנימציות מהבהב */
+@keyframes irReceiveBlink {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.5;
+        transform: scale(0.9);
+    }
+}
+
+@keyframes irSendBlink {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.3;
+        transform: scale(0.8);
+    }
+}
+
 .ir-buttons {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
@@ -282,6 +382,10 @@ h2 {
     cursor: pointer;
     transition: all 0.3s;
     font-size: 0.9em;
+    margin: 5px;
+    min-width: 100px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(102, 126, 234, 0.3);
 }
 
 .ir-button:hover {
@@ -290,10 +394,93 @@ h2 {
     transform: scale(1.05);
 }
 
+.ir-button:active {
+    transform: scale(0.95);
+}
+
 .ir-button.learned {
     background: #28a745;
     border-color: #28a745;
     color: white;
+    position: relative;
+}
+
+.ir-button.learned::after {
+    content: ' ✅';
+    font-size: 0.9em;
+}
+
+/* אנימציה ללמידה */
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 10px rgba(255, 215, 0, 0);
+    }
+}
+
+.ir-button.learning {
+    animation: pulse 1s infinite;
+    background: #ffd700;
+    color: #000;
+    border-color: #ffd700;
+}
+
+/* חיווי קליטה מוצלחת */
+.ir-button.captured {
+    animation: irButtonPulse 0.5s ease;
+    background: #00b894 !important;
+    border-color: #00b894 !important;
+    color: white !important;
+}
+
+/* חיווי על כפתור בשלט הויזואלי כשקוד נקלט */
+.remote-btn.ir-captured {
+    animation: irButtonPulse 0.5s ease;
+    background: #00b894 !important;
+    box-shadow: 0 0 30px rgba(0, 184, 148, 0.8) !important;
+    transform: scale(1.2) !important;
+}
+
+@keyframes irButtonPulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(0, 184, 148, 0.7);
+    }
+    50% {
+        box-shadow: 0 0 0 20px rgba(0, 184, 148, 0);
+    }
+}
+
+/* אינדיקטור הצלחה */
+.ir-capture-success {
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #00b894;
+    color: white;
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-size: 0.8em;
+    font-weight: bold;
+    z-index: 10001;
+    animation: slideDown 0.5s ease;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
 }
 
 /* טאבים */
@@ -440,18 +627,18 @@ h2 {
 
 .device-info p {
     margin: 5px 0;
-    color: #666;
+color: #666;
 }
 
 @media (max-width: 768px) {
-    header h1 {
+header h1 {
         font-size: 1.8em;
     }
-    
+
     .devices-list {
         grid-template-columns: 1fr;
     }
-    
+
     .connection-tabs {
         flex-direction: column;
     }
@@ -1258,79 +1445,76 @@ h2 {
     font-weight: bold;
     font-size: 1.1em;
     transition: color 0.3s ease;
-}
-
-/* רספונסיבי */
+* רספונסיבי */
 @media (max-width: 768px) {
-    body {
+body {
         padding: 10px;
     }
-    
-    .container {
+
+.container {
         border-radius: 10px;
     }
-    
-    header {
+
+header {
         padding: 20px;
     }
-    
-    header h1 {
+
+header h1 {
         font-size: 1.8em;
     }
-    
+
     .main-content {
-        padding: 15px;
+    padding: 15px;
     }
-    
+
     section {
         padding: 15px;
-        margin-bottom: 20px;
+    margin-bottom: 20px;
     }
-    
+
     .visual-remote {
         padding: 15px;
         max-width: 100%;
     }
-    
-    .remote-btn {
+
+.remote-btn {
         padding: 15px;
         font-size: 1.1em;
         min-height: 50px;
-        touch-action: manipulation;
+    touch-action: manipulation;
         -webkit-tap-highlight-color: rgba(102, 126, 234, 0.3);
     }
-    
-    .remote-numbers {
+
+.remote-numbers {
         gap: 8px;
     }
-    
-    .remote-controls, .remote-features {
+
+.remote-controls, .remote-features {
         gap: 8px;
     }
-    
-    .remote-navigation {
+
+.remote-navigation {
         gap: 8px;
     }
-    
-    .nav-middle {
+
+.nav-middle {
         gap: 8px;
     }
-    
-    #cameraPreview {
+
+#cameraPreview {
         max-width: 100%;
     }
-    
+
     .device-card {
         padding: 15px;
     }
-    
-    .btn-primary, .btn-secondary {
+ .btn-primary, .btn-secondary {
         padding: 12px 20px;
         font-size: 0.95em;
         touch-action: manipulation;
         -webkit-tap-highlight-color: rgba(102, 126, 234, 0.3);
     }
-    
+
     .visual-remote-container {
         padding: 15px !important;
         display: flex !important;
@@ -1339,91 +1523,89 @@ h2 {
         width: 100% !important;
         max-width: 100% !important;
         margin: 20px auto !important;
-        min-height: 300px !important;
+    min-height: 300px !important;
         max-height: none !important;
         overflow-y: visible !important;
         position: relative !important;
         z-index: 1 !important;
         background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%) !important;
     }
-    
+
     .visual-remote {
-        width: 100% !important;
+    width: 100% !important;
         max-width: 100% !important;
         display: block !important;
         visibility: visible !important;
         opacity: 1 !important;
         padding: 15px !important;
     }
-    
+
     .remote-numbers,
     .remote-navigation,
-    .remote-controls,
+.remote-controls,
     .remote-features,
     .remote-device-specific {
         display: grid !important;
-        visibility: visible !important;
+    visibility: visible !important;
         opacity: 1 !important;
     }
-    
+
     .remote-navigation {
         display: flex !important;
     }
-    
+
     .remote-status-indicator {
         font-size: 0.8em;
         padding: 6px 12px;
     }
-}
-
-/* מכשירים ניידים קטנים */
+* מכשירים ניידים קטנים */
 @media (max-width: 480px) {
-    body {
+body {
         padding: 5px;
     }
-    
-    header h1 {
+
+header h1 {
         font-size: 1.5em;
     }
-    
-    .main-content {
+
+.main-content {
         padding: 10px;
     }
-    
-    section {
+
+section {
         padding: 10px;
     }
-    
+
     .visual-remote {
         padding: 10px;
-    }
-    
+}
+
     .remote-btn {
         padding: 12px;
         font-size: 1em;
-        min-height: 45px;
+    min-height: 45px;
     }
-    
+
     .remote-numbers {
         grid-template-columns: repeat(3, 1fr);
-        gap: 6px;
+    gap: 6px;
     }
-    
+
     .remote-controls {
         grid-template-columns: repeat(2, 1fr);
-        gap: 6px;
+    gap: 6px;
     }
-    
+
     .remote-features {
         grid-template-columns: repeat(3, 1fr);
-        gap: 6px;
+    gap: 6px;
     }
-    
+
     .remote-device-specific {
         grid-template-columns: repeat(2, 1fr);
         gap: 6px;
     }
-    
+
     .visual-remote-container {
         display: flex !important;
         visibility: visible !important;
@@ -1431,35 +1613,28 @@ h2 {
         width: 100% !important;
         max-width: 100% !important;
         margin: 20px auto !important;
-        padding: 10px !important;
+    padding: 10px !important;
         min-height: 250px !important;
         max-height: none !important;
         overflow-y: visible !important;
         position: relative !important;
         z-index: 1 !important;
     }
-    
+
     .visual-remote {
-        width: 100% !important;
+    width: 100% !important;
         max-width: 100% !important;
         padding: 10px !important;
         display: block !important;
         visibility: visible !important;
         opacity: 1 !important;
     }
-    
+
     .remote-numbers,
     .remote-navigation,
-    .remote-controls,
+.remote-controls,
     .remote-features,
     .remote-device-specific {
         display: grid !important;
         visibility: visible !important;
         opacity: 1 !important;
-    }
-    
-    .remote-navigation {
-        display: flex !important;
-    }
-}
-

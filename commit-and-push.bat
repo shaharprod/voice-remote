@@ -1,5 +1,5 @@
-
 @echo off
+chcp 65001 >nul
 echo ========================================
 echo Commit ו-Push ל-GitHub
 echo ========================================
@@ -30,7 +30,7 @@ echo ✅ קבצים נוספו
 echo.
 
 echo [3/6] יוצר commit...
-git commit -m "תיקון הצגת שלט רחוק בגיטהב + הטמעת השלט בדף + הזזת טמפלטים לתחתית + cache-busting v2.1" --no-verify
+git commit -m "Fix IR indicators on GitHub Pages + NEON TV + cache-busting v2.5" --no-verify
 if %errorlevel% neq 0 (
     echo ⚠️  אין שינויים חדשים או שגיאה ב-commit
     REM נמשיך גם אם אין שינויים

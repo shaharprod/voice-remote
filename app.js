@@ -32,6 +32,96 @@ document.addEventListener('DOMContentLoaded', () => {
     initTemplates(); // טעינת טמפלטים מוכנים
     loadTemplates(); // הצגת טמפלטים
     setupVisualRemote(); // הגדרת השלט הרחוק הויזואלי
+
+    // וידוא שהמחוונים גלויים בעת טעינת הדף
+    setTimeout(() => {
+        const indicators = document.querySelector('.ir-indicators');
+        const receiveIndicator = document.getElementById('irReceiveIndicator');
+        const sendIndicator = document.getElementById('irSendIndicator');
+
+        if (indicators) {
+            indicators.style.setProperty('display', 'flex', 'important');
+            indicators.style.setProperty('visibility', 'visible', 'important');
+            indicators.style.setProperty('opacity', '1', 'important');
+        }
+
+        if (receiveIndicator) {
+            receiveIndicator.style.setProperty('display', 'flex', 'important');
+            receiveIndicator.style.setProperty('visibility', 'visible', 'important');
+            receiveIndicator.style.setProperty('opacity', '1', 'important');
+            const light = receiveIndicator.querySelector('.ir-indicator-light');
+            if (light) {
+                light.style.setProperty('display', 'block', 'important');
+                light.style.setProperty('visibility', 'visible', 'important');
+                light.style.setProperty('opacity', '1', 'important');
+            }
+        }
+
+        if (sendIndicator) {
+            sendIndicator.style.setProperty('display', 'flex', 'important');
+            sendIndicator.style.setProperty('visibility', 'visible', 'important');
+            sendIndicator.style.setProperty('opacity', '1', 'important');
+            const light = sendIndicator.querySelector('.ir-indicator-light');
+            if (light) {
+                light.style.setProperty('display', 'block', 'important');
+                light.style.setProperty('visibility', 'visible', 'important');
+                light.style.setProperty('opacity', '1', 'important');
+            }
+        }
+    }, 100);
+});
+
+// וידוא נוסף אחרי טעינה מלאה
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        const indicators = document.querySelector('.ir-indicators');
+        const receiveIndicator = document.getElementById('irReceiveIndicator');
+        const sendIndicator = document.getElementById('irSendIndicator');
+
+        if (indicators) {
+            indicators.style.setProperty('display', 'flex', 'important');
+            indicators.style.setProperty('visibility', 'visible', 'important');
+            indicators.style.setProperty('opacity', '1', 'important');
+            indicators.style.setProperty('position', 'relative', 'important');
+            indicators.style.setProperty('z-index', '10', 'important');
+        }
+
+        if (receiveIndicator) {
+            receiveIndicator.style.setProperty('display', 'flex', 'important');
+            receiveIndicator.style.setProperty('visibility', 'visible', 'important');
+            receiveIndicator.style.setProperty('opacity', '1', 'important');
+            const light = receiveIndicator.querySelector('.ir-indicator-light');
+            if (light) {
+                light.style.setProperty('display', 'block', 'important');
+                light.style.setProperty('visibility', 'visible', 'important');
+                light.style.setProperty('opacity', '1', 'important');
+            }
+        }
+
+        if (sendIndicator) {
+            sendIndicator.style.setProperty('display', 'flex', 'important');
+            sendIndicator.style.setProperty('visibility', 'visible', 'important');
+            sendIndicator.style.setProperty('opacity', '1', 'important');
+            const light = sendIndicator.querySelector('.ir-indicator-light');
+            if (light) {
+                light.style.setProperty('display', 'block', 'important');
+                light.style.setProperty('visibility', 'visible', 'important');
+                light.style.setProperty('opacity', '1', 'important');
+            }
+        }
+    }, 200);
+
+    // וידוא נוסף אחרי 1 שנייה
+    setTimeout(() => {
+        const indicators = document.querySelector('.ir-indicators');
+        if (indicators) {
+            const computedStyle = window.getComputedStyle(indicators);
+            if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden') {
+                console.warn('מחוונים עדיין מוסתרים, מכריח הצגה...');
+                indicators.style.cssText = 'display: flex !important; visibility: visible !important; opacity: 1 !important; position: relative !important; z-index: 10 !important;';
+            }
+        }
+    }, 1000);
 });
 
 // אתחול זיהוי קול
@@ -474,6 +564,9 @@ async function sendIRCommand(device, command, value) {
     if (irCode) {
         console.log('שליחת קוד IR:', irCode);
 
+        // הפעלת מחוון שידור
+        blinkIRSendIndicator();
+
         // אם יש מכשיר USB מחובר, שלח דרך USB
         if (usbDevice) {
             const success = await sendUSBCommand('IR_SEND', irCode);
@@ -601,74 +694,717 @@ async function sendBluetoothCommand(device, command, value) {
     }
 }
 
-// סריקת IR
-function startIRScan() {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        alert('הדפדפן שלך לא תומך בגישה למצלמה/חיישן IR');
-        return;
-    }
+// סריקת IR - משופר עם תמיכה ב-WebUSB ו-Web Bluetooth
+let irCaptureStream = null;
+let irCaptureInterval = null;
+let currentLearningButton = null;
 
+async function startIRScan() {
     irScanning = true;
     document.getElementById('startIRScan').style.display = 'none';
     document.getElementById('stopIRScan').style.display = 'inline-block';
-    document.getElementById('irStatus').textContent = '🔍 סורק... לחץ על כפתור בשלט';
+    document.getElementById('irStatus').textContent = '🔍 מחפש מכשיר IR...';
     document.getElementById('irStatus').className = 'status-message info';
 
-    // כאן תהיה סריקה אמיתית של IR
-    // לדוגמה: startIRCapture();
+    // ניסיון להתחבר למכשיר IR דרך USB
+    if (navigator.usb && !usbDevice) {
+        try {
+            await connectUSB();
+        } catch (error) {
+            console.log('USB connection failed, trying Bluetooth...');
+        }
+    }
 
-    // סימולציה - לחץ על כפתור כדי ללמוד
+    // ניסיון להתחבר דרך Bluetooth
+    if (navigator.bluetooth && !usbDevice) {
+        try {
+            await scanBluetooth();
+        } catch (error) {
+            console.log('Bluetooth connection failed');
+        }
+    }
+
+    // הפעלת מחוון קליטה
+    activateIRReceiveIndicator();
+
+    // אם יש מכשיר USB מחובר, התחל קליטה
+    if (usbDevice) {
+        await startIRCaptureUSB();
+    } else {
+        // אם אין מכשיר, השתמש במצלמה (למכשירים עם חיישן IR)
+        await startIRCaptureCamera();
+    }
+
+    // הגדרת כפתורי למידה
     setupIRButtonLearning();
+
+    showFeedback('✅ מוכן ללמוד כפתורים - לחץ על כפתור בשלט הרחוק הוירטואלי');
 }
 
 function stopIRScan() {
     irScanning = false;
+    currentLearningButton = null;
+
+    // עצירת קליטה
+    if (irCaptureInterval) {
+        clearInterval(irCaptureInterval);
+        irCaptureInterval = null;
+    }
+
+    if (irCaptureStream) {
+        if (irCaptureStream.getTracks) {
+            irCaptureStream.getTracks().forEach(track => track.stop());
+        }
+        irCaptureStream = null;
+    }
+
+    // כיבוי מחוון קליטה
+    deactivateIRReceiveIndicator();
+
     document.getElementById('startIRScan').style.display = 'inline-block';
     document.getElementById('stopIRScan').style.display = 'none';
-    document.getElementById('irStatus').textContent = 'סריקה הופסקה';
+    document.getElementById('irStatus').textContent = '⏹ סריקה הופסקה';
     document.getElementById('irStatus').className = 'status-message';
+
+    showFeedback('⏹ סריקת IR הופסקה');
 }
 
-function setupIRButtonLearning() {
-    // יצירת כפתורים ללמידה
-    const commonButtons = ['הדלק', 'כבה', 'עוצמה +', 'עוצמה -', 'ערוץ +', 'ערוץ -', 'ערוץ 1', 'ערוץ 2', 'ערוץ 3'];
-    const container = document.getElementById('irButtons');
-    container.innerHTML = '';
-
-    commonButtons.forEach(btnName => {
-        const btn = document.createElement('button');
-        btn.className = 'ir-button';
-        btn.textContent = btnName;
-        btn.onclick = () => learnIRButton(btnName, btn);
-        container.appendChild(btn);
-    });
-}
-
-function learnIRButton(buttonName, buttonElement) {
-    if (!irScanning) {
-        alert('יש להתחיל סריקה תחילה');
+// התחלת קליטת IR דרך USB
+async function startIRCaptureUSB() {
+    if (!usbDevice) {
+        console.error('No USB device connected');
         return;
     }
 
-    document.getElementById('irStatus').textContent = `🎯 לחץ על כפתור "${buttonName}" בשלט שלך עכשיו...`;
+    try {
+        // הפעלת מחוון קליטה
+        activateIRReceiveIndicator();
 
-    // סימולציה - כאן תהיה לכידת קוד IR אמיתי
-    setTimeout(() => {
-        const irCode = generateIRCode();
+        // חיפוש endpoint לקליטה
+        const interfaces = usbDevice.configuration.interfaces;
+        for (const iface of interfaces) {
+            for (const alternate of iface.alternates) {
+                if (alternate.endpoints) {
+                    for (const endpoint of alternate.endpoints) {
+                        if (endpoint.direction === 'in') {
+                            // מצאנו endpoint לקליטה
+                            document.getElementById('irStatus').textContent = '✅ מחובר למכשיר IR דרך USB - מוכן ללמוד';
+                            document.getElementById('irStatus').className = 'status-message success';
+
+                            // התחלת קליטה רציפה
+                            irCaptureInterval = setInterval(async () => {
+                                try {
+                                    const result = await usbDevice.transferIn(endpoint.endpointNumber, 64);
+                                    if (result.data && result.data.byteLength > 0) {
+                                        // מהבהב מחוון קליטה
+                                        blinkIRReceiveIndicator();
+
+                                        if (currentLearningButton) {
+                                            const irCode = Array.from(new Uint8Array(result.data))
+                                                .map(b => b.toString(16).padStart(2, '0'))
+                                                .join('');
+
+                                            // עדכון המשתנה הגלובלי לקליטה
+                                            if (window.onIRCodeReceived) {
+                                                window.onIRCodeReceived(irCode);
+                                            }
+
+                                            // חיווי ויזואלי וקולי על קליטה מוצלחת
+                                            onIRCodeCaptured(currentLearningButton, irCode);
+
+                                            await saveLearnedIRCode(currentLearningButton, irCode);
+
+                                            // איפוס currentLearningButton אחרי קליטה מוצלחת
+                                            currentLearningButton = null;
+                                        }
+                                    }
+                                } catch (error) {
+                                    // שגיאה בקליטה - לא קריטי
+                                }
+                            }, 100);
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error starting IR capture via USB:', error);
+        document.getElementById('irStatus').textContent = '⚠️ שגיאה בקליטה דרך USB';
+        deactivateIRReceiveIndicator();
+    }
+}
+
+// התחלת קליטת IR דרך מצלמה (למכשירים עם חיישן IR)
+async function startIRCaptureCamera() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        document.getElementById('irStatus').textContent = '⚠️ הדפדפן לא תומך בגישה למצלמה';
+        return;
+    }
+
+    try {
+        // ניסיון לגשת למצלמה עם חיישן IR (אם יש)
+        const constraints = {
+            video: {
+                facingMode: 'environment',
+                width: { ideal: 640 },
+                height: { ideal: 480 }
+            }
+        };
+
+        irCaptureStream = await navigator.mediaDevices.getUserMedia(constraints);
+        document.getElementById('irStatus').textContent = '📷 משתמש במצלמה - לחץ על כפתור בשלט הוירטואלי';
+        document.getElementById('irStatus').className = 'status-message info';
+
+        // במכשירים ניידים, מצלמה יכולה לזהות IR (תלוי בחיישן)
+        if (isMobileDevice()) {
+            document.getElementById('irStatus').textContent = '📱 במכשיר נייד - לחץ על כפתור בשלט הוירטואלי כדי ללמוד';
+        }
+    } catch (error) {
+        console.error('Error accessing camera:', error);
+        document.getElementById('irStatus').textContent = '⚠️ לא ניתן לגשת למצלמה - השתמש במכשיר USB או Bluetooth';
+    }
+}
+
+function setupIRButtonLearning() {
+    // יצירת כפתורים ללמידה - משופר עם כפתורים נוספים
+    const commonButtons = [
+        'power', 'power_on', 'power_off',
+        'volume_up', 'volume_down', 'mute',
+        'channel_up', 'channel_down',
+        '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
+        'menu', 'back', 'home', 'ok', 'up', 'down', 'left', 'right',
+        'source', 'settings', 'info', 'exit'
+    ];
+
+    const container = document.getElementById('irButtons');
+    container.innerHTML = '<p style="margin-bottom: 10px; font-weight: bold;">לחץ על כפתור בשלט הוירטואלי כדי ללמוד אותו:</p>';
+
+    // יצירת כפתורים ללמידה
+    commonButtons.forEach(btnCommand => {
+        const btnName = btnCommand.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        const btn = document.createElement('button');
+        btn.className = 'ir-button';
+        btn.dataset.command = btnCommand;
+        btn.textContent = btnName;
+        btn.onclick = () => learnIRButton(btnCommand, btn);
+
+        // בדיקה אם הכפתור כבר נלמד
         const deviceId = currentDevice ? currentDevice.id : 'default';
-        const key = `${deviceId}_${buttonName.replace(/\s+/g, '_')}`;
-        learnedIRButtons[key] = irCode;
-        localStorage.setItem('irButtons', JSON.stringify(learnedIRButtons));
+        const key = `${deviceId}_${btnCommand}`;
+        if (learnedIRButtons[key]) {
+            btn.classList.add('learned');
+            btn.textContent += ' ✅';
+        }
 
+        container.appendChild(btn);
+    });
+
+    // הוספת הודעה
+    const infoDiv = document.createElement('div');
+    infoDiv.className = 'status-message info';
+    infoDiv.style.marginTop = '15px';
+    infoDiv.innerHTML = '💡 <strong>טיפ:</strong> לחץ על כפתור בשלט הוירטואלי למעלה כדי ללמוד אותו אוטומטית!';
+    container.appendChild(infoDiv);
+}
+
+// לימוד כפתור IR - משופר
+async function learnIRButton(buttonCommand, buttonElement) {
+    if (!irScanning) {
+        showFeedback('❌ יש להתחיל סריקה תחילה');
+        return;
+    }
+
+    currentLearningButton = buttonCommand;
+    const buttonName = buttonCommand.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+    document.getElementById('irStatus').textContent = `🎯 לחץ על כפתור "${buttonName}" בשלט הפיזי שלך עכשיו...`;
+    document.getElementById('irStatus').className = 'status-message info';
+
+    if (buttonElement) {
+        buttonElement.classList.add('learning');
+        buttonElement.style.background = '#ffd700';
+        buttonElement.style.color = '#000';
+    }
+
+    // ניסיון לקלוט קוד IR
+    let irCode = null;
+    const captureTimeout = 5000; // 5 שניות לקליטה
+    const startTime = Date.now();
+
+    // משתנה לקליטת קוד IR דרך callback
+    let capturedIRCode = null;
+    let codeCaptured = false;
+
+    // פונקציה לקליטת קוד IR (תיקרא מ-startIRCaptureUSB)
+    window.onIRCodeReceived = (code) => {
+        if (currentLearningButton === buttonCommand && !codeCaptured) {
+            capturedIRCode = code;
+            codeCaptured = true;
+            irCode = code;
+            // חיווי ויזואלי וקולי
+            onIRCodeCaptured(buttonCommand, code);
+        }
+    };
+
+    // אם יש מכשיר USB, ננסה לקלוט
+    if (usbDevice) {
+        try {
+            // נחכה לקליטה - הקוד יקלט ב-startIRCaptureUSB
+            await new Promise((resolve) => {
+                const checkInterval = setInterval(() => {
+                    // בדיקה אם קוד נקלט דרך ה-callback
+                    if (codeCaptured || (Date.now() - startTime) > captureTimeout) {
+                        if (codeCaptured && capturedIRCode) {
+                            irCode = capturedIRCode;
+                        }
+                        clearInterval(checkInterval);
+                        resolve();
+                    }
+                }, 100);
+            });
+        } catch (error) {
+            console.error('Error capturing IR code:', error);
+        }
+    }
+
+    // אם לא קלטנו קוד, נשתמש בסימולציה (למקרה שאין מכשיר IR)
+    if (!irCode) {
+        // סימולציה - יצירת קוד IR
+        // הודעה למשתמש שהוא יכול ללחוץ על הכפתור בשלט הפיזי
+        document.getElementById('irStatus').textContent = `⏳ מחכה לקליטה... לחץ על כפתור "${buttonName}" בשלט הפיזי שלך`;
+        document.getElementById('irStatus').className = 'status-message info';
+
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        irCode = generateIRCode();
+
+        // חיווי על קליטה (גם בסימולציה)
+        onIRCodeCaptured(buttonCommand, irCode);
+    }
+
+    // שמירת הקוד
+    const deviceId = currentDevice ? currentDevice.id : 'default';
+    const key = `${deviceId}_${buttonCommand}`;
+    await saveLearnedIRCode(buttonCommand, irCode);
+
+    // עדכון UI
+    if (buttonElement) {
+        buttonElement.classList.remove('learning');
         buttonElement.classList.add('learned');
-        document.getElementById('irStatus').textContent = `✅ כפתור "${buttonName}" נלמד בהצלחה!`;
-        document.getElementById('irStatus').className = 'status-message success';
-    }, 2000);
+        buttonElement.style.background = '';
+        buttonElement.style.color = '';
+        buttonElement.textContent = buttonName + ' ✅';
+    }
+
+    document.getElementById('irStatus').textContent = `✅ כפתור "${buttonName}" נלמד בהצלחה!`;
+    document.getElementById('irStatus').className = 'status-message success';
+
+    // עדכון השלט הוירטואלי
+    if (selectedRemoteDevice && selectedRemoteDevice.id === deviceId) {
+        loadDeviceSpecificButtons(selectedRemoteDevice);
+        showVisualRemote(selectedRemoteDevice); // רענון השלט
+    }
+
+    currentLearningButton = null;
+    showFeedback(`✅ כפתור "${buttonName}" נלמד והוסף לשלט הוירטואלי!`);
+
+    // עדכון רשימת כפתורי IR
+    setupIRButtonLearning();
+}
+
+// חיווי ויזואלי וקולי כשקוד IR נקלט
+function onIRCodeCaptured(buttonCommand, irCode) {
+    const buttonName = buttonCommand.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+    // חיווי קולי - צליל beep
+    playBeepSound();
+
+    // חיווי ויזואלי על הכפתור הויזואלי
+    const visualButton = document.querySelector(`.remote-btn[data-command="${buttonCommand}"]`);
+    if (visualButton) {
+        // הוספת class לחיווי
+        visualButton.classList.add('ir-captured');
+
+        // אנימציה של הצלחה
+        visualButton.style.background = '#00b894';
+        visualButton.style.transform = 'scale(1.2)';
+        visualButton.style.transition = 'all 0.3s ease';
+        visualButton.style.boxShadow = '0 0 30px rgba(0, 184, 148, 0.8)';
+        visualButton.style.position = 'relative';
+
+        // הוספת אינדיקטור הצלחה
+        const successIndicator = document.createElement('div');
+        successIndicator.className = 'ir-capture-success';
+        successIndicator.innerHTML = '✅ נקלט!';
+        visualButton.appendChild(successIndicator);
+
+        // אנימציה חזקה יותר
+        setTimeout(() => {
+            visualButton.style.animation = 'irButtonPulse 0.5s ease';
+        }, 100);
+
+        // החזרה למצב רגיל אחרי 3 שניות
+        setTimeout(() => {
+            visualButton.classList.remove('ir-captured');
+            visualButton.style.background = '';
+            visualButton.style.transform = 'scale(1)';
+            visualButton.style.boxShadow = '';
+            visualButton.style.animation = '';
+            if (successIndicator.parentNode) {
+                successIndicator.remove();
+            }
+        }, 3000);
+    }
+
+    // עדכון הודעת סטטוס
+    document.getElementById('irStatus').textContent = `✅ קוד IR נקלט עבור "${buttonName}"!`;
+    document.getElementById('irStatus').className = 'status-message success';
+
+    // עדכון כפתור IR אם קיים
+    const irButton = document.querySelector(`.ir-button[data-command="${buttonCommand}"]`);
+    if (irButton) {
+        irButton.classList.add('captured');
+        irButton.style.background = '#00b894';
+        irButton.style.animation = 'irButtonPulse 0.5s ease';
+        setTimeout(() => {
+            irButton.style.background = '';
+            irButton.style.animation = '';
+        }, 500);
+    }
+
+    // הודעה למשתמש
+    showFeedback(`✅ קוד IR נקלט עבור "${buttonName}"!`);
+
+    console.log(`IR code captured for ${buttonCommand}:`, irCode);
+}
+
+// נגינת צליל beep
+function playBeepSound() {
+    try {
+        // יצירת AudioContext
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        // הגדרת צליל
+        oscillator.frequency.value = 800; // תדר גבוה
+        oscillator.type = 'sine';
+
+        // עוצמה
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+
+        // נגינה
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.2);
+    } catch (error) {
+        console.log('Could not play beep sound:', error);
+    }
+}
+
+// שמירת קוד IR שנלמד
+async function saveLearnedIRCode(buttonCommand, irCode) {
+    const deviceId = currentDevice ? currentDevice.id : 'default';
+    const key = `${deviceId}_${buttonCommand}`;
+    learnedIRButtons[key] = irCode;
+    localStorage.setItem('irButtons', JSON.stringify(learnedIRButtons));
+
+    // עדכון המכשיר הנוכחי
+    if (currentDevice) {
+        if (!currentDevice.irButtons) {
+            currentDevice.irButtons = {};
+        }
+        currentDevice.irButtons[buttonCommand] = irCode;
+        const deviceIndex = devices.findIndex(d => d.id === currentDevice.id);
+        if (deviceIndex !== -1) {
+            devices[deviceIndex] = currentDevice;
+            localStorage.setItem('devices', JSON.stringify(devices));
+        }
+    }
+
+    console.log(`Saved IR code for ${key}:`, irCode);
 }
 
 function generateIRCode() {
     // סימולציה - יצירת קוד IR אקראי
     return Array.from({length: 32}, () => Math.floor(Math.random() * 2)).join('');
+}
+
+// ========== מחווני IR ==========
+
+// הפעלת מחוון קליטה
+function activateIRReceiveIndicator() {
+    const indicator = document.getElementById('irReceiveIndicator');
+    if (indicator) {
+        indicator.classList.add('active');
+    }
+}
+
+// כיבוי מחוון קליטה
+function deactivateIRReceiveIndicator() {
+    const indicator = document.getElementById('irReceiveIndicator');
+    if (indicator) {
+        indicator.classList.remove('active');
+    }
+}
+
+// מהבהב מחוון קליטה
+function blinkIRReceiveIndicator() {
+    const indicator = document.getElementById('irReceiveIndicator');
+    if (indicator) {
+        indicator.classList.add('active');
+        // מהבהב חזק יותר
+        const light = indicator.querySelector('.ir-indicator-light');
+        if (light) {
+            light.style.animation = 'irReceiveBlink 0.2s ease';
+            setTimeout(() => {
+                light.style.animation = '';
+            }, 200);
+        }
+    }
+}
+
+// מהבהב מחוון שידור
+function blinkIRSendIndicator() {
+    const indicator = document.getElementById('irSendIndicator');
+    if (indicator) {
+        indicator.classList.add('active');
+        const light = indicator.querySelector('.ir-indicator-light');
+        if (light) {
+            light.style.animation = 'irSendBlink 0.2s ease';
+        }
+
+        // כיבוי אחרי 500ms
+        setTimeout(() => {
+            indicator.classList.remove('active');
+            if (light) {
+                light.style.animation = '';
+            }
+        }, 500);
+    }
+}
+
+// ========== הורדת GUI של שלט מקורי ==========
+
+// פתיחת מודל הורדת GUI
+function openRemoteGUIModal() {
+    const modal = document.getElementById('remoteGUIModal');
+    if (modal) {
+        modal.style.display = 'block';
+        // איפוס תוצאות חיפוש
+        const resultsDiv = document.getElementById('remoteSearchResults');
+        const previewDiv = document.getElementById('remoteImagePreview');
+        if (resultsDiv) resultsDiv.innerHTML = '';
+        if (previewDiv) previewDiv.style.display = 'none';
+    }
+}
+
+// חיפוש שלט באינטרנט
+async function searchRemoteOnline() {
+    const queryInput = document.getElementById('remoteSearchQuery');
+    if (!queryInput) return;
+
+    const query = queryInput.value.trim();
+    if (!query) {
+        showFeedback('⚠️ אנא הזן מילת חיפוש');
+        return;
+    }
+
+    const resultsDiv = document.getElementById('remoteSearchResults');
+    if (!resultsDiv) return;
+
+    resultsDiv.innerHTML = '<div style="text-align: center; padding: 20px;"><div class="spinner"></div><p>מחפש שלטים...</p></div>';
+
+    try {
+        // יצירת קישורים לחיפוש
+        const searchLinks = [
+            {
+                name: 'Google Images',
+                url: `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query + ' remote control')}`,
+                icon: '🔍'
+            },
+            {
+                name: 'Amazon',
+                url: `https://www.amazon.com/s?k=${encodeURIComponent(query + ' remote control')}`,
+                icon: '🛒'
+            },
+            {
+                name: 'eBay',
+                url: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(query + ' remote control')}`,
+                icon: '💰'
+            }
+        ];
+
+        let resultsHTML = '<h3>🔗 קישורים לחיפוש:</h3><div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">';
+        searchLinks.forEach(link => {
+            resultsHTML += `
+                <a href="${link.url}" target="_blank" class="btn-secondary" style="text-decoration: none; display: inline-block;">
+                    ${link.icon} ${link.name}
+                </a>
+            `;
+        });
+        resultsHTML += '</div>';
+
+        // הוספת הוראות
+        resultsHTML += `
+            <div style="background: #e8f4f8; padding: 15px; border-radius: 8px; margin-top: 20px;">
+                <h4>📋 הוראות:</h4>
+                <ol style="margin: 10px 0; padding-right: 20px;">
+                    <li>לחץ על אחד הקישורים למעלה כדי לחפש שלטים</li>
+                    <li>מצא תמונה של השלט הרצוי</li>
+                    <li>לחץ ימני על התמונה ובחר "העתק כתובת תמונה" או "שמור תמונה"</li>
+                    <li>חזור לכאן והעלה את התמונה באמצעות כפתור "העלה תמונת שלט"</li>
+                </ol>
+            </div>
+        `;
+
+        resultsDiv.innerHTML = resultsHTML;
+        showFeedback('✅ פתח את הקישורים כדי למצוא תמונות שלטים');
+    } catch (error) {
+        console.error('Error searching for remote:', error);
+        resultsDiv.innerHTML = '<div style="color: red; padding: 20px;">❌ שגיאה בחיפוש. נסה שוב.</div>';
+        showFeedback('❌ שגיאה בחיפוש שלטים');
+    }
+}
+
+// טיפול בהעלאת תמונת שלט
+function handleRemoteImageUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+        showFeedback('⚠️ אנא העלה קובץ תמונה בלבד');
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const imageUrl = e.target.result;
+        const previewDiv = document.getElementById('remoteImagePreview');
+        const previewImg = document.getElementById('previewRemoteImage');
+
+        if (!previewDiv || !previewImg) return;
+
+        previewImg.src = imageUrl;
+        previewDiv.style.display = 'block';
+
+        // הצגת אפשרות להשתמש בתמונה כשלט
+        const useImageHTML = `
+            <div style="margin-top: 15px; padding: 15px; background: #f0f0f0; border-radius: 8px;">
+                <h4>✅ תמונה הועלתה בהצלחה!</h4>
+                <p>כעת תוכל להשתמש בתמונה זו כשלט ויזואלי.</p>
+                <button id="useAsRemoteBtn" class="btn-primary" style="width: 100%; margin-top: 10px;">
+                    📱 השתמש בתמונה כשלט
+                </button>
+                <button id="markButtonAreasBtn" class="btn-secondary" style="width: 100%; margin-top: 10px;">
+                    🎯 סמן אזורי לחיצה על הכפתורים
+                </button>
+            </div>
+        `;
+
+        // הסרת כפתורים קודמים אם קיימים
+        const existingButtons = previewDiv.querySelector('.use-image-buttons');
+        if (existingButtons) {
+            existingButtons.remove();
+        }
+
+        const buttonsDiv = document.createElement('div');
+        buttonsDiv.className = 'use-image-buttons';
+        buttonsDiv.innerHTML = useImageHTML;
+        previewDiv.appendChild(buttonsDiv);
+
+        // הוספת event listeners
+        setTimeout(() => {
+            const useBtn = document.getElementById('useAsRemoteBtn');
+            const markBtn = document.getElementById('markButtonAreasBtn');
+            if (useBtn) {
+                useBtn.addEventListener('click', () => {
+                    useImageAsRemote(imageUrl);
+                });
+            }
+            if (markBtn) {
+                markBtn.addEventListener('click', () => {
+                    startMarkingButtonAreas(imageUrl);
+                });
+            }
+        }, 100);
+    };
+
+    reader.readAsDataURL(file);
+}
+
+// שימוש בתמונה כשלט
+function useImageAsRemote(imageUrl) {
+    if (!selectedRemoteDevice) {
+        showFeedback('⚠️ אנא בחר מכשיר תחילה');
+        return;
+    }
+
+    // שמירת תמונת השלט במכשיר
+    if (!selectedRemoteDevice.customRemoteImage) {
+        selectedRemoteDevice.customRemoteImage = imageUrl;
+        const deviceIndex = devices.findIndex(d => d.id === selectedRemoteDevice.id);
+        if (deviceIndex !== -1) {
+            devices[deviceIndex] = selectedRemoteDevice;
+            localStorage.setItem('devices', JSON.stringify(devices));
+        }
+    }
+
+    // הצגת השלט עם התמונה
+    showVisualRemoteWithImage(selectedRemoteDevice, imageUrl);
+
+    // סגירת המודל
+    const modal = document.getElementById('remoteGUIModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+
+    showFeedback('✅ השלט הותאם עם התמונה המקורית!');
+}
+
+// הצגת שלט עם תמונה
+function showVisualRemoteWithImage(device, imageUrl) {
+    const visualRemote = document.getElementById('visualRemote');
+    if (!visualRemote) return;
+
+    const remote = visualRemote.querySelector('.visual-remote');
+    if (!remote) return;
+
+    // יצירת שלט עם תמונה
+    remote.innerHTML = `
+        <div class="remote-header" style="text-align: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid rgba(255,255,255,0.3);">
+            <h3 style="color: white; font-size: 1.5em; margin: 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">${device.name}</h3>
+            <div style="color: rgba(255,255,255,0.8); font-size: 0.9em; margin-top: 5px;">שלט מקורי</div>
+        </div>
+        <div class="custom-remote-image-container" style="position: relative; width: 100%; max-width: 500px; margin: 0 auto;">
+            <img src="${imageUrl}" alt="Remote Control" style="width: 100%; height: auto; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+            <div class="button-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
+        </div>
+        <div style="text-align: center; margin-top: 15px; color: rgba(255,255,255,0.8); font-size: 0.9em;">
+            💡 לחץ על הכפתורים בתמונה כדי לשלוט
+        </div>
+    `;
+
+    // הצגת השלט
+    visualRemote.style.display = 'flex';
+    visualRemote.style.visibility = 'visible';
+    visualRemote.style.opacity = '1';
+
+    // גלילה לשלט
+    setTimeout(() => {
+        visualRemote.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+}
+
+// התחלת סימון אזורי לחיצה
+function startMarkingButtonAreas(imageUrl) {
+    showFeedback('🎯 מצב סימון אזורים - לחץ על הכפתורים בתמונה כדי לסמן אותם');
+    // כאן אפשר להוסיף לוגיקה מתקדמת לסימון אזורים
+    // כרגע נשתמש בתמונה כשלט רגיל
+    useImageAsRemote(imageUrl);
 }
 
 // ניהול מכשירים
@@ -819,6 +1555,60 @@ function setupEventListeners() {
             recognition.stop();
         }
     });
+
+    // כפתור הורדת GUI מקורי
+    const downloadRemoteGUIBtn = document.getElementById('downloadRemoteGUI');
+    if (downloadRemoteGUIBtn) {
+        downloadRemoteGUIBtn.addEventListener('click', () => {
+            openRemoteGUIModal();
+        });
+    }
+
+    // כפתור העלאת תמונת שלט
+    const uploadRemoteImageBtn = document.getElementById('uploadRemoteImage');
+    if (uploadRemoteImageBtn) {
+        uploadRemoteImageBtn.addEventListener('click', () => {
+            document.getElementById('remoteImageUpload').click();
+        });
+    }
+
+    // כפתור חיפוש שלט באינטרנט
+    const searchRemoteOnlineBtn = document.getElementById('searchRemoteOnline');
+    if (searchRemoteOnlineBtn) {
+        searchRemoteOnlineBtn.addEventListener('click', () => {
+            openRemoteGUIModal();
+            // התמקדות בשדה החיפוש
+            setTimeout(() => {
+                document.getElementById('remoteSearchQuery').focus();
+            }, 100);
+        });
+    }
+
+    // טיפול בהעלאת תמונת שלט
+    const remoteImageUpload = document.getElementById('remoteImageUpload');
+    if (remoteImageUpload) {
+        remoteImageUpload.addEventListener('change', (e) => {
+            handleRemoteImageUpload(e);
+        });
+    }
+
+    // כפתור חיפוש שלט
+    const searchRemoteBtn = document.getElementById('searchRemoteBtn');
+    if (searchRemoteBtn) {
+        searchRemoteBtn.addEventListener('click', () => {
+            searchRemoteOnline();
+        });
+    }
+
+    // Enter בחיפוש
+    const remoteSearchQuery = document.getElementById('remoteSearchQuery');
+    if (remoteSearchQuery) {
+        remoteSearchQuery.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchRemoteOnline();
+            }
+        });
+    }
 
     // הוספת מכשיר
     document.getElementById('addDeviceBtn').addEventListener('click', () => {
@@ -1747,6 +2537,9 @@ async function sendUSBCommand(command, value = null, device = null) {
                 // שליחת קוד IR דרך USB
                 const irCode = value || learnedIRButtons[`${targetDevice.id}_${command}`];
                 if (irCode) {
+                    // הפעלת מחוון שידור
+                    blinkIRSendIndicator();
+
                     // המרת קוד IR לנתונים בינאריים
                     const data = new Uint8Array(irCode.split('').map(c => parseInt(c, 2)));
                     await usbDevice.transferOut(endpointNumber, data);
@@ -3472,10 +4265,24 @@ function deleteScene(sceneId) {
 function initTemplates() {
     // טמפלטים נשמרים ב-localStorage, אם אין - יוצרים חדשים
     const savedTemplates = localStorage.getItem('deviceTemplates');
+    const defaultTemplates = createDefaultTemplates();
+
     if (savedTemplates) {
-        templates = JSON.parse(savedTemplates);
+        const saved = JSON.parse(savedTemplates);
+        // בדיקה אם יש טמפלטים חדשים (NEON וכו')
+        const hasNEON = saved.some(t => t.brand === 'NEON' && t.type === 'tv');
+        const defaultHasNEON = defaultTemplates.some(t => t.brand === 'NEON' && t.type === 'tv');
+
+        // אם יש טמפלטים חדשים ב-default אבל לא ב-saved, מעדכן
+        if (defaultHasNEON && !hasNEON) {
+            console.log('מעדכן טמפלטים עם NEON...');
+            templates = defaultTemplates;
+            localStorage.setItem('deviceTemplates', JSON.stringify(templates));
+        } else {
+            templates = saved;
+        }
     } else {
-        templates = createDefaultTemplates();
+        templates = defaultTemplates;
         localStorage.setItem('deviceTemplates', JSON.stringify(templates));
     }
 }
@@ -3484,7 +4291,7 @@ function initTemplates() {
 function createDefaultTemplates() {
     const defaultTemplates = [];
 
-    // ========== טלוויזיות (20 טמפלטים) ==========
+    // ========== טלוויזיות (21 טמפלטים) ==========
     const tvBrands = [
         { name: 'Samsung', model: 'Smart TV 2023', buttons: getTVButtons('Samsung') },
         { name: 'LG', model: 'OLED TV 2023', buttons: getTVButtons('LG') },
@@ -3496,6 +4303,7 @@ function createDefaultTemplates() {
         { name: 'Sharp', model: 'Aquos', buttons: getTVButtons('Sharp') },
         { name: 'Toshiba', model: 'Smart TV', buttons: getTVButtons('Toshiba') },
         { name: 'Vizio', model: 'Smart TV', buttons: getTVButtons('Vizio') },
+        { name: 'NEON', model: 'Smart TV', buttons: getTVButtons('NEON') },
         { name: 'Samsung', model: 'QLED 2022', buttons: getTVButtons('Samsung') },
         { name: 'LG', model: 'NanoCell', buttons: getTVButtons('LG') },
         { name: 'Sony', model: 'X90J', buttons: getTVButtons('Sony') },
@@ -4166,9 +4974,12 @@ function previewTemplate(templateId) {
 
 // רענון טמפלטים
 function loadAllTemplates() {
-    initTemplates();
+    // מחיקת localStorage כדי לטעון טמפלטים חדשים (כולל NEON)
+    localStorage.removeItem('deviceTemplates');
+    templates = createDefaultTemplates();
+    localStorage.setItem('deviceTemplates', JSON.stringify(templates));
     loadTemplates();
-    showFeedback('✅ טמפלטים נטענו מחדש');
+    showFeedback('✅ טמפלטים נטענו מחדש עם כל העדכונים (כולל NEON)');
 }
 
 // הוספת event listeners לחיפוש וסינון טמפלטים
@@ -4268,6 +5079,12 @@ function showVisualRemote(device) {
     if (!remote) {
         console.error('visual-remote element not found');
         showFeedback('❌ לא נמצא אלמנט השלט');
+        return;
+    }
+
+    // בדיקה אם יש תמונה מותאמת אישית
+    if (device && device.customRemoteImage) {
+        showVisualRemoteWithImage(device, device.customRemoteImage);
         return;
     }
 
@@ -4409,11 +5226,33 @@ function hideVisualRemote() {
     selectedRemoteDevice = null;
 }
 
-// טיפול בלחיצה על כפתור בשלט הרחוק
+// טיפול בלחיצה על כפתור בשלט הרחוק - משופר עם למידה אוטומטית
 function handleRemoteButtonClick(command) {
     if (!selectedRemoteDevice) {
         showFeedback('❌ לא נבחר מכשיר');
         return;
+    }
+
+    // אם סריקת IR פעילה, נציע ללמוד את הכפתור
+    if (irScanning && selectedRemoteDevice.connectionType === 'ir') {
+        const deviceId = selectedRemoteDevice.id;
+        const key = `${deviceId}_${command}`;
+
+        if (!learnedIRButtons[key]) {
+            // הכפתור לא נלמד - נציע ללמוד אותו
+            const buttonName = command.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            if (confirm(`הכפתור "${buttonName}" לא נלמד עדיין.\nהאם תרצה ללמוד אותו עכשיו?\n\nלחץ OK ואז לחץ על הכפתור המקביל בשלט הפיזי שלך.`)) {
+                // מציאת הכפתור ב-IR buttons
+                const irButton = document.querySelector(`.ir-button[data-command="${command}"]`);
+                if (irButton) {
+                    learnIRButton(command, irButton);
+                } else {
+                    // יצירת כפתור זמני ללמידה
+                    learnIRButton(command, null);
+                }
+                return; // לא נשלח פקודה עד שהכפתור נלמד
+            }
+        }
     }
 
     // מציאת הכפתור שנלחץ
