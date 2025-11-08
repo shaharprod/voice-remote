@@ -565,21 +565,48 @@ function mapCommandToDeviceStandard(device, command, value) {
 
 // שליחת פקודת IR
 async function sendIRCommand(device, command, value) {
+    console.log('🔍 מחפש קוד IR למכשיר:', device.name, 'פקודה:', command, 'value:', value);
+
     // חיפוש קוד IR - קודם ב-learnedIRButtons, אחר כך ב-device.irButtons (מטמפלטים)
     const buttonKey = `${device.id}_${command}${value ? '_' + value : ''}`;
     let irCode = learnedIRButtons[buttonKey];
+
+    console.log('🔍 חיפוש ב-learnedIRButtons:', buttonKey, 'נמצא:', !!irCode);
 
     // אם לא נמצא ב-learnedIRButtons, נסה למצוא ב-device.irButtons (מטמפלטים)
     if (!irCode && device.irButtons) {
         // חיפוש ישיר ב-irButtons של המכשיר
         const directKey = command + (value ? '_' + value : '');
         irCode = device.irButtons[directKey] || device.irButtons[command];
+        console.log('🔍 חיפוש ב-device.irButtons:', directKey, 'נמצא:', !!irCode);
+        console.log('🔍 כל הכפתורים ב-device.irButtons:', Object.keys(device.irButtons));
 
         // אם עדיין לא נמצא, נסה למצוא בטמפלט
         if (!irCode && device.templateId) {
             const template = templates.find(t => t.id === device.templateId);
             if (template && template.buttons) {
+                console.log('🔍 חיפוש בטמפלט:', template.name, 'כפתורים:', Object.keys(template.buttons));
                 irCode = template.buttons[directKey] || template.buttons[command];
+                console.log('🔍 חיפוש בטמפלט:', directKey, 'נמצא:', !!irCode);
+
+                // אם נמצא בטמפלט, עדכן את device.irButtons
+                if (irCode) {
+                    if (!device.irButtons) {
+                        device.irButtons = {};
+                    }
+                    device.irButtons[command] = irCode;
+                    // עדכון learnedIRButtons
+                    learnedIRButtons[buttonKey] = irCode;
+                    localStorage.setItem('irButtons', JSON.stringify(learnedIRButtons));
+
+                    // עדכון המכשיר ב-localStorage
+                    const deviceIndex = devices.findIndex(d => d.id === device.id);
+                    if (deviceIndex !== -1) {
+                        devices[deviceIndex] = device;
+                        localStorage.setItem('devices', JSON.stringify(devices));
+                    }
+                    console.log('✅ קוד IR עודכן מהטמפלט:', irCode.substring(0, 20) + '...');
+                }
             }
         }
     }
@@ -716,6 +743,28 @@ async function sendIRCommand(device, command, value) {
                 confirmIRTransmissionSent(irCode, device.name, command);
                 showFeedback('✅ פקודת IR נשלחה דרך IR blaster של המכשיר');
             } else {
+                // ניסיון נוסף - שליחה דרך אפליקציית IR חיצונית
+                // יצירת קישור לשליחה דרך אפליקציות IR נפוצות
+                try {
+                    // ניסיון לשלוח דרך MI Remote (Xiaomi)
+                    if (isXiaomiWithIRBlaster()) {
+                        // יצירת Intent לשליחה דרך MI Remote
+                        const miRemoteIntent = `intent://sendir?code=${encodeURIComponent(irCode)}&device=${encodeURIComponent(device.name)}&command=${encodeURIComponent(command)}#Intent;scheme=miui;package=com.xiaomi.smarthome;end`;
+                        window.location.href = miRemoteIntent;
+
+                        // אם זה לא עובד, נסה דרך AnyMote
+                        setTimeout(() => {
+                            const anyMoteIntent = `anymote://sendir?code=${encodeURIComponent(irCode)}`;
+                            window.location.href = anyMoteIntent;
+                        }, 1000);
+
+                        showFeedback('📱 מנסה לשלוח דרך אפליקציית IR של המכשיר...\nאם האפליקציה לא נפתחת, התקן "MI Remote" או "AnyMote"');
+                        confirmIRTransmissionSent(irCode, device.name, command);
+                        return;
+                    }
+                } catch (e) {
+                    console.log('שגיאה בשליחה דרך Intent:', e);
+                }
                 // אם לא הצלחנו לשלוח, נציג הודעה עם הוראות
                 console.log('קוד IR לשימוש ידני:', irCode);
                 console.log('מכשיר:', device.name, 'פקודה:', command);
@@ -753,13 +802,51 @@ async function sendIRCommand(device, command, value) {
             showFeedback('⚠️ אין מכשיר USB מחובר. התחבר דרך USB');
         }
     } else {
-        console.log('קוד IR לא נמצא למכשיר:', device.name, 'פקודה:', command);
-        console.log('learnedIRButtons:', learnedIRButtons);
-        console.log('device.irButtons:', device.irButtons);
-        console.log('device.templateId:', device.templateId);
+        console.error('❌ קוד IR לא נמצא למכשיר:', device.name, 'פקודה:', command);
+        console.log('🔍 חיפוש ב-learnedIRButtons:', Object.keys(learnedIRButtons).filter(k => k.startsWith(device.id)));
+        console.log('🔍 device.irButtons:', device.irButtons);
+        console.log('🔍 device.templateId:', device.templateId);
+
+        // אם יש templateId, נסה לטעון את הטמפלט שוב
+        if (device.templateId) {
+            const template = templates.find(t => t.id === device.templateId);
+            if (template && template.buttons) {
+                console.log('🔍 נמצא טמפלט:', template.name, 'עם כפתורים:', Object.keys(template.buttons));
+                // עדכון device.irButtons מהטמפלט
+                if (!device.irButtons) {
+                    device.irButtons = {};
+                }
+                Object.assign(device.irButtons, template.buttons);
+
+                // עדכון learnedIRButtons
+                Object.keys(template.buttons).forEach(buttonKey => {
+                    const deviceButtonKey = `${device.id}_${buttonKey}`;
+                    learnedIRButtons[deviceButtonKey] = template.buttons[buttonKey];
+                });
+                localStorage.setItem('irButtons', JSON.stringify(learnedIRButtons));
+
+                // עדכון המכשיר ב-localStorage
+                const deviceIndex = devices.findIndex(d => d.id === device.id);
+                if (deviceIndex !== -1) {
+                    devices[deviceIndex] = device;
+                    localStorage.setItem('devices', JSON.stringify(devices));
+                }
+
+                // ניסיון שוב לשלוח
+                console.log('🔄 ניסיון שוב לשלוח אחרי עדכון מהטמפלט...');
+                const directKey = command + (value ? '_' + value : '');
+                const retryCode = device.irButtons[directKey] || device.irButtons[command] || template.buttons[directKey] || template.buttons[command];
+
+                if (retryCode) {
+                    console.log('✅ נמצא קוד IR אחרי עדכון:', retryCode.substring(0, 20) + '...');
+                    // קריאה רקורסיבית לשליחה
+                    return sendIRCommand(device, command, value);
+                }
+            }
+        }
 
         if (isMobileDevice()) {
-            showFeedback('⚠️ קוד IR לא נמצא. השתמש בטמפלטים מוכנים או למד דרך USB/Bluetooth');
+            showFeedback(`⚠️ קוד IR לא נמצא למכשיר "${device.name}" עבור פקודה "${command}".\n\nאנא ודא שהמכשיר נוסף מטמפלט או שהכפתור נלמד.`);
         } else {
             showFeedback('⚠️ קוד IR לא נמצא. יש לסרוק תחילה');
         }
@@ -1374,7 +1461,7 @@ async function saveLearnedIRCode(buttonCommand, irCode) {
 }
 
 function generateIRCode() {
-    // סימולציה - יצירת קוד IR אקראי
+    // סימולציה - יצירת קוד IR אקראי (32 ביט)
     return Array.from({length: 32}, () => Math.floor(Math.random() * 2)).join('');
 }
 
@@ -5143,10 +5230,17 @@ function getHubButtons(brand) {
 // יצירת קוד IR ייחודי לפי מותג ופקודה
 function generateIRCode(brand, command) {
     // יצירת קוד IR ייחודי (בפועל זה יהיה קוד אמיתי, כאן זה סימולציה)
+    // שימוש ב-hash קבוע כדי שהקוד יהיה זהה בכל פעם (חשוב לטמפלטים)
     const brandHash = brand.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
     const commandHash = command.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const timestamp = Date.now();
-    return `${brandHash.toString(16)}-${commandHash.toString(16)}-${timestamp.toString(16).slice(-8)}`;
+    // יצירת קוד קבוע (לא משתמש ב-timestamp כדי שהקוד יהיה זהה)
+    const baseCode = (brandHash * 1000 + commandHash).toString(16);
+    // יצירת קוד IR בפורמט בינארי (32 ביט)
+    const binaryCode = Array.from({length: 32}, (_, i) => {
+        const bit = (parseInt(baseCode, 16) >> i) & 1;
+        return bit.toString();
+    }).reverse().join('');
+    return binaryCode;
 }
 
 // טעינת והצגת טמפלטים
@@ -5639,7 +5733,12 @@ function handleRemoteButtonClick(command) {
     }
 
     // שליחת פקודה למכשיר
-    sendCommand(selectedRemoteDevice, command);
+    console.log('שליחת פקודה:', command, 'למכשיר:', selectedRemoteDevice.name);
+    console.log('מכשיר connectionType:', selectedRemoteDevice.connectionType);
+    console.log('מכשיר irButtons:', selectedRemoteDevice.irButtons);
+    console.log('מכשיר templateId:', selectedRemoteDevice.templateId);
+
+    sendCommand(command, null, selectedRemoteDevice);
 
     // חיווי ויזואלי נוסף - הודעת הצלחה עם שם הכפתור
     const commandName = command.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
