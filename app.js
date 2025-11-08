@@ -617,41 +617,47 @@ async function sendIRCommand(device, command, value) {
         // הפעלת מחוון שידור
         blinkIRSendIndicator();
 
-        // אם זה מכשיר נייד עם IR blaster, נסה לשלוח דרך ה-IR blaster
+        // במכשירים ניידים, נסה לשלוח IR דרך מספר דרכים
         if (isMobileDevice() && !usbDevice) {
-            // ניסיון לשלוח דרך IR blaster של המכשיר
-            try {
-                // ניסיון להשתמש ב-Android Intent או API של Xiaomi/Redmi
-                // אם יש API זמין, נשתמש בו
-                if (window.Android && window.Android.sendIR) {
-                    // Android Intent דרך WebView
-                    window.Android.sendIR(irCode);
-                    showFeedback('✅ פקודת IR נשלחה דרך IR blaster');
-                    console.log('שליחת IR דרך Android Intent:', irCode);
-                    return;
-                } else if (isXiaomiWithIRBlaster()) {
-                    // ניסיון לשלוח דרך IR blaster של Xiaomi/Redmi
-                    // כרגע אין API סטנדרטי, אבל ננסה דרך Intent או API מותאם
-                    try {
-                        // ניסיון לשלוח דרך Intent (אם יש WebView עם גישה)
-                        if (window.location.protocol === 'https:' || window.location.protocol === 'http:') {
-                            // בדפדפן רגיל, נשתמש בסימולציה עם הודעה
-                            // בפועל, זה צריך להיות דרך אפליקציה מותאמת או WebView
-                            showFeedback('✅ פקודת IR נשלחה דרך IR blaster של המכשיר');
-                            console.log('שליחת IR דרך IR blaster:', irCode, 'למכשיר:', device.name);
+            console.log('📱 מכשיר נייד מזוהה - מנסה לשלוח IR...');
 
-                            // ניסיון לשלוח דרך Intent (אם זמין)
-                            if (window.Android && typeof window.Android.sendIR === 'function') {
-                                window.Android.sendIR(irCode);
-                            }
-                            return;
-                        }
-                    } catch (error) {
-                        console.log('לא ניתן לשלוח דרך IR blaster, מנסה USB/Bluetooth...', error);
-                    }
+            // ניסיון 1: Android Intent דרך WebView (אם יש)
+            if (window.Android && typeof window.Android.sendIR === 'function') {
+                try {
+                    window.Android.sendIR(irCode);
+                    confirmIRTransmissionSent(irCode, device.name, command);
+                    showFeedback('✅ פקודת IR נשלחה דרך Android Intent');
+                    console.log('✅ שליחת IR דרך Android Intent:', irCode);
+                    return;
+                } catch (e) {
+                    console.log('Android Intent לא זמין:', e);
                 }
-            } catch (error) {
-                console.log('שגיאה בשליחת IR דרך mobile:', error);
+            }
+
+            // ניסיון 2: שליחה דרך Intent לאפליקציות IR
+            try {
+                // יצירת Intent לשליחת IR דרך אפליקציות IR נפוצות
+                const irIntents = [
+                    // MI Remote (Xiaomi) - Intent מלא
+                    `intent://sendir?code=${encodeURIComponent(irCode)}&device=${encodeURIComponent(device.name)}&command=${encodeURIComponent(command)}#Intent;scheme=miui;package=com.xiaomi.smarthome;action=android.intent.action.VIEW;end`,
+                    // AnyMote
+                    `intent://sendir?code=${encodeURIComponent(irCode)}#Intent;scheme=anymote;package=com.remotefairy;action=android.intent.action.VIEW;end`,
+                    // IR Universal Remote
+                    `intent://sendir?code=${encodeURIComponent(irCode)}#Intent;scheme=ir;action=android.intent.action.VIEW;end`,
+                    // Smart IR Remote
+                    `intent://sendir?code=${encodeURIComponent(irCode)}#Intent;scheme=smartir;action=android.intent.action.VIEW;end`
+                ];
+
+                // ניסיון לשלוח דרך Intent הראשון (MI Remote)
+                window.location.href = irIntents[0];
+                console.log('📱 ניסיון לשלוח דרך Intent:', irIntents[0].substring(0, 80) + '...');
+
+                // הפעלת מחוון שידור (אפילו אם לא בטוח שנשלח)
+                confirmIRTransmissionSent(irCode, device.name, command);
+                showFeedback('📱 מנסה לשלוח דרך אפליקציית IR...\nאם האפליקציה לא נפתחת, התקן "MI Remote" או "AnyMote"');
+                return;
+            } catch (e) {
+                console.log('שגיאה בשליחה דרך Intent:', e);
             }
         }
 
@@ -686,20 +692,30 @@ async function sendIRCommand(device, command, value) {
             if (!irSent) {
                 try {
                     // ניסיון לפתוח אפליקציות IR נפוצות דרך URL scheme
+                    // סדר חשוב - ננסה קודם את האפליקציות הנפוצות ביותר
                     const irApps = [
-                        `intent://sendir?code=${encodeURIComponent(irCode)}#Intent;scheme=ir;end`,
-                        `miui://sendir?code=${encodeURIComponent(irCode)}`,
-                        `xiaomi://sendir?code=${encodeURIComponent(irCode)}`,
-                        `ir://send?code=${encodeURIComponent(irCode)}`
+                        // MI Remote (Xiaomi) - הכי נפוץ
+                        `miui://sendir?code=${encodeURIComponent(irCode)}&device=${encodeURIComponent(device.name)}&command=${encodeURIComponent(command)}`,
+                        // AnyMote
+                        `anymote://sendir?code=${encodeURIComponent(irCode)}`,
+                        // IR Universal Remote
+                        `ir://send?code=${encodeURIComponent(irCode)}`,
+                        // Smart IR Remote
+                        `smartir://send?code=${encodeURIComponent(irCode)}`,
+                        // Intent כללי
+                        `intent://sendir?code=${encodeURIComponent(irCode)}#Intent;scheme=ir;end`
                     ];
 
                     for (const url of irApps) {
                         try {
                             window.location.href = url;
                             irSent = true;
-                            console.log('שליחת IR דרך URL scheme:', url);
+                            console.log('📱 ניסיון לשלוח דרך URL scheme:', url.substring(0, 60) + '...');
+                            // נחכה קצת כדי לראות אם האפליקציה נפתחת
+                            await new Promise(resolve => setTimeout(resolve, 300));
                             break;
                         } catch (e) {
+                            console.log('URL scheme לא עובד:', e);
                             // המשך לניסיון הבא
                         }
                     }
@@ -743,28 +759,61 @@ async function sendIRCommand(device, command, value) {
                 confirmIRTransmissionSent(irCode, device.name, command);
                 showFeedback('✅ פקודת IR נשלחה דרך IR blaster של המכשיר');
             } else {
-                // ניסיון נוסף - שליחה דרך אפליקציית IR חיצונית
-                // יצירת קישור לשליחה דרך אפליקציות IR נפוצות
+                // ניסיון נוסף - שליחה דרך אפליקציית IR חיצונית או Intent
+                console.log('🔄 מנסה לשלוח IR דרך אפליקציות חיצוניות...');
+
+                // ניסיון לשלוח דרך Android Intent (אם יש WebView)
                 try {
-                    // ניסיון לשלוח דרך MI Remote (Xiaomi)
-                    if (isXiaomiWithIRBlaster()) {
-                        // יצירת Intent לשליחה דרך MI Remote
-                        const miRemoteIntent = `intent://sendir?code=${encodeURIComponent(irCode)}&device=${encodeURIComponent(device.name)}&command=${encodeURIComponent(command)}#Intent;scheme=miui;package=com.xiaomi.smarthome;end`;
-                        window.location.href = miRemoteIntent;
+                    // ניסיון לשלוח דרך Intent לשליחת IR
+                    const intentActions = [
+                        // Intent לשליחת IR דרך MI Remote
+                        `intent://sendir?code=${encodeURIComponent(irCode)}&device=${encodeURIComponent(device.name)}&command=${encodeURIComponent(command)}#Intent;scheme=miui;package=com.xiaomi.smarthome;action=android.intent.action.VIEW;end`,
+                        // Intent לשליחת IR דרך AnyMote
+                        `intent://sendir?code=${encodeURIComponent(irCode)}#Intent;scheme=anymote;package=com.remotefairy;action=android.intent.action.VIEW;end`,
+                        // Intent כללי לשליחת IR
+                        `intent://sendir?code=${encodeURIComponent(irCode)}#Intent;scheme=ir;action=android.intent.action.VIEW;end`
+                    ];
 
-                        // אם זה לא עובד, נסה דרך AnyMote
-                        setTimeout(() => {
-                            const anyMoteIntent = `anymote://sendir?code=${encodeURIComponent(irCode)}`;
-                            window.location.href = anyMoteIntent;
-                        }, 1000);
-
-                        showFeedback('📱 מנסה לשלוח דרך אפליקציית IR של המכשיר...\nאם האפליקציה לא נפתחת, התקן "MI Remote" או "AnyMote"');
-                        confirmIRTransmissionSent(irCode, device.name, command);
-                        return;
+                    for (const intent of intentActions) {
+                        try {
+                            window.location.href = intent;
+                            console.log('📱 ניסיון לשלוח דרך Intent:', intent.substring(0, 50) + '...');
+                            // נחכה קצת כדי לראות אם האפליקציה נפתחת
+                            await new Promise(resolve => setTimeout(resolve, 500));
+                            irSent = true;
+                            break;
+                        } catch (e) {
+                            console.log('Intent לא עובד:', e);
+                        }
                     }
                 } catch (e) {
                     console.log('שגיאה בשליחה דרך Intent:', e);
                 }
+
+                // אם עדיין לא נשלח, נסה דרך אפליקציות IR נפוצות
+                if (!irSent) {
+                    try {
+                        // ניסיון לשלוח דרך MI Remote (Xiaomi)
+                        if (isXiaomiWithIRBlaster()) {
+                            // יצירת Intent לשליחה דרך MI Remote
+                            const miRemoteIntent = `intent://sendir?code=${encodeURIComponent(irCode)}&device=${encodeURIComponent(device.name)}&command=${encodeURIComponent(command)}#Intent;scheme=miui;package=com.xiaomi.smarthome;end`;
+                            window.location.href = miRemoteIntent;
+
+                            // אם זה לא עובד, נסה דרך AnyMote
+                            setTimeout(() => {
+                                const anyMoteIntent = `anymote://sendir?code=${encodeURIComponent(irCode)}`;
+                                window.location.href = anyMoteIntent;
+                            }, 1000);
+
+                            showFeedback('📱 מנסה לשלוח דרך אפליקציית IR של המכשיר...\nאם האפליקציה לא נפתחת, התקן "MI Remote" או "AnyMote"');
+                            confirmIRTransmissionSent(irCode, device.name, command);
+                            return;
+                        }
+                    } catch (e) {
+                        console.log('שגיאה בשליחה דרך Intent:', e);
+                    }
+                }
+
                 // אם לא הצלחנו לשלוח, נציג הודעה עם הוראות
                 console.log('קוד IR לשימוש ידני:', irCode);
                 console.log('מכשיר:', device.name, 'פקודה:', command);
