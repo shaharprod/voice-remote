@@ -639,14 +639,108 @@ async function sendIRCommand(device, command, value) {
 
         // אם זה מכשיר נייד, נסה לשלוח דרך IR blaster (גם אם לא Xiaomi)
         if (isMobileDevice() && !usbDevice) {
-            // ניסיון לשלוח דרך IR blaster (אם יש)
-            showFeedback('✅ פקודת IR נשלחה דרך IR blaster של המכשיר');
-            console.log('שליחת IR דרך IR blaster (mobile):', irCode, 'למכשיר:', device.name);
+            // ניסיון לשלוח דרך IR blaster
+            let irSent = false;
 
-            // ניסיון לשלוח דרך Intent או API (אם זמין)
+            // ניסיון 1: Android Intent דרך WebView
             if (window.Android && typeof window.Android.sendIR === 'function') {
-                window.Android.sendIR(irCode);
+                try {
+                    window.Android.sendIR(irCode);
+                    irSent = true;
+                    console.log('שליחת IR דרך Android Intent:', irCode);
+                } catch (e) {
+                    console.log('Android Intent לא זמין:', e);
+                }
             }
+
+            // ניסיון 2: Custom URL scheme לאפליקציות IR נפוצות
+            if (!irSent) {
+                try {
+                    // ניסיון לפתוח אפליקציות IR נפוצות דרך URL scheme
+                    const irApps = [
+                        `intent://sendir?code=${encodeURIComponent(irCode)}#Intent;scheme=ir;end`,
+                        `miui://sendir?code=${encodeURIComponent(irCode)}`,
+                        `xiaomi://sendir?code=${encodeURIComponent(irCode)}`,
+                        `ir://send?code=${encodeURIComponent(irCode)}`
+                    ];
+
+                    for (const url of irApps) {
+                        try {
+                            window.location.href = url;
+                            irSent = true;
+                            console.log('שליחת IR דרך URL scheme:', url);
+                            break;
+                        } catch (e) {
+                            // המשך לניסיון הבא
+                        }
+                    }
+                } catch (e) {
+                    console.log('URL scheme לא עובד:', e);
+                }
+            }
+
+            // ניסיון 3: Web Share API (אם נתמך)
+            if (!irSent && navigator.share) {
+                try {
+                    await navigator.share({
+                        title: 'IR Command',
+                        text: `IR Code: ${irCode}`,
+                        url: `ir://send?code=${encodeURIComponent(irCode)}`
+                    });
+                    irSent = true;
+                    console.log('שליחת IR דרך Web Share API');
+                } catch (e) {
+                    console.log('Web Share API לא עובד:', e);
+                }
+            }
+
+            // ניסיון 4: Broadcast Intent דרך Android (אם יש WebView)
+            if (!irSent && window.Android && typeof window.Android.broadcast === 'function') {
+                try {
+                    window.Android.broadcast('android.intent.action.VIEW', {
+                        'ir_code': irCode,
+                        'device_name': device.name
+                    });
+                    irSent = true;
+                    console.log('שליחת IR דרך Broadcast Intent');
+                } catch (e) {
+                    console.log('Broadcast Intent לא עובד:', e);
+                }
+            }
+
+            // הודעה למשתמש
+            if (irSent) {
+                showFeedback('✅ פקודת IR נשלחה דרך IR blaster של המכשיר');
+            } else {
+                // אם לא הצלחנו לשלוח, נציג הודעה עם הוראות
+                console.log('קוד IR לשימוש ידני:', irCode);
+                console.log('מכשיר:', device.name, 'פקודה:', command);
+
+                // ניסיון להעתיק את הקוד ל-clipboard
+                let clipboardCopied = false;
+                if (navigator.clipboard) {
+                    try {
+                        await navigator.clipboard.writeText(irCode);
+                        clipboardCopied = true;
+                    } catch (e) {
+                        console.log('לא ניתן להעתיק ל-clipboard:', e);
+                    }
+                }
+
+                // הצגת הודעה מפורטת
+                const message = clipboardCopied
+                    ? `📋 קוד IR הועתק ל-clipboard!\n\nלהפעלת המכשיר:\n1. פתח את אפליקציית IR של המכשיר (MI Remote, AnyMote וכו')\n2. בחר את המכשיר: ${device.name}\n3. לחץ על הכפתור: ${command}\n\nאו השתמש בקוד: ${irCode.substring(0, 20)}...`
+                    : `⚠️ לא ניתן לשלוח IR אוטומטית.\n\nלהפעלת המכשיר:\n1. פתח את אפליקציית IR של המכשיר\n2. בחר את המכשיר: ${device.name}\n3. לחץ על הכפתור: ${command}\n\nקוד IR: ${irCode.substring(0, 30)}...`;
+
+                showFeedback(message);
+
+                // הצגת הודעה נוספת עם קישור לאפליקציות IR
+                setTimeout(() => {
+                    const helpMessage = `💡 טיפ: התקן אפליקציית IR כמו "MI Remote" או "AnyMote" כדי לשלוח IR מהנייד`;
+                    showFeedback(helpMessage);
+                }, 3000);
+            }
+
             return;
         }
 
