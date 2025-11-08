@@ -1,79 +1,103 @@
 @echo off
-chcp 65001 >nul
+chcp 65001 >nul 2>&1
 echo ========================================
-echo Commit ו-Push ל-GitHub
+echo Commit and Push to GitHub
 echo ========================================
 echo.
 
-REM בדיקה אם יש Git repository
-if not exist .git (
-    echo [1/6] מאתחל Git repository...
-    git init
-    if %errorlevel% neq 0 (
-        echo ❌ שגיאה: Git לא מותקן!
-        pause
-        exit /b 1
-    )
-) else (
-    echo ✅ Git repository קיים
-)
-echo.
-
-echo [2/6] מוסיף קבצים...
-git add .
+REM Check if Git is installed
+where git >nul 2>&1
 if %errorlevel% neq 0 (
-    echo ❌ שגיאה בהוספת קבצים
+    echo ERROR: Git is not installed or not in PATH!
+    echo Please install Git from: https://git-scm.com/download/win
     pause
     exit /b 1
 )
-echo ✅ קבצים נוספו
-echo.
+echo [OK] Git is installed
 
-echo [3/6] יוצר commit...
-git commit -m "Fix IR indicators visibility on GitHub Pages - multiple checks + NEON TV + cache-busting v2.6" --no-verify
-if %errorlevel% neq 0 (
-    echo ⚠️  אין שינויים חדשים או שגיאה ב-commit
-    REM נמשיך גם אם אין שינויים
+REM Check if Git repository exists
+if not exist .git (
+    echo [1/6] Initializing Git repository...
+    git init
+    if %errorlevel% neq 0 (
+        echo ERROR: Cannot initialize Git repository!
+        pause
+        exit /b 1
+    )
+    echo [OK] Git repository created
+) else (
+    echo [OK] Git repository exists
 )
 echo.
 
-echo [4/6] בודק remote...
+echo [2/6] Adding files...
+git add .
+if %errorlevel% neq 0 (
+    echo ERROR: Failed to add files
+    pause
+    exit /b 1
+)
+echo [OK] Files added
+
+REM Check if there are changes
+git diff --cached --quiet
+if %errorlevel% equ 0 (
+    echo [INFO] No new changes to commit
+) else (
+    echo [OK] New changes to commit
+)
+echo.
+
+echo [3/6] Creating commit...
+git commit -m "Add multiple NEON TV models (7 total) + Electra/Tadiran AC + cache-busting v2.10" --no-verify
+if %errorlevel% neq 0 (
+    echo [WARNING] No new changes or commit error
+    REM Continue even if no changes
+)
+echo.
+
+echo [4/6] Checking remote...
 git remote get-url origin >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [5/6] מוסיף remote ל-GitHub...
+    echo [5/6] Adding remote to GitHub...
     git remote add origin https://github.com/shaharprod/voice-remote.git
     if %errorlevel% neq 0 (
-        echo ⚠️  Remote כבר קיים, מעדכן...
+        echo [WARNING] Remote already exists, updating...
         git remote set-url origin https://github.com/shaharprod/voice-remote.git
     )
 ) else (
-    echo ✅ Remote כבר מוגדר
+    echo [OK] Remote already configured
 )
 echo.
 
-echo [5.5/6] מוריד שינויים מה-remote (pull)...
-git pull origin main --no-rebase --no-edit
+echo [5.5/6] Pulling changes from remote...
+git pull origin main --no-rebase --no-edit 2>nul
 if %errorlevel% neq 0 (
-    echo ⚠️  שגיאה ב-pull, מנסה rebase...
-    git pull origin main --rebase --no-edit
+    echo [WARNING] Pull error, trying rebase...
+    git pull origin main --rebase --no-edit 2>nul
     if %errorlevel% neq 0 (
-        echo ⚠️  שגיאה גם ב-rebase, ממשיך עם push...
+        echo [WARNING] Rebase also failed, continuing with push...
+        echo [INFO] This is normal if this is the first push
+    ) else (
+        echo [OK] Pull succeeded (rebase)
     )
+) else (
+    echo [OK] Pull succeeded
 )
 echo.
 
-echo [6/6] מעלה ל-GitHub (push)...
+echo [6/6] Pushing to GitHub...
 git branch -M main
 git push -u origin main --force-with-lease
 if %errorlevel% neq 0 (
-    echo ⚠️  שגיאה ב-push עם force-with-lease, מנסה push רגיל...
+    echo [WARNING] Push with force-with-lease failed, trying regular push...
     git push -u origin main
     if %errorlevel% neq 0 (
         echo.
-        echo ⚠️  אם יש שגיאה, ייתכן שצריך:
-        echo 1. להתחבר ל-GitHub (username/password)
-        echo 2. להשתמש ב-Personal Access Token במקום סיסמה
-        echo 3. לפתור קונפליקטים ידנית: git pull, ואז git push
+        echo [WARNING] If there is an error, you may need to:
+        echo 1. Login to GitHub (username/password)
+        echo 2. Use Personal Access Token instead of password
+        echo 3. Resolve conflicts manually: git pull, then git push
         pause
         exit /b 1
     )
@@ -81,13 +105,13 @@ if %errorlevel% neq 0 (
 
 echo.
 echo ========================================
-echo ✅ הושלם בהצלחה!
+echo [SUCCESS] Completed successfully!
 echo ========================================
 echo.
-echo האפליקציה הועלתה ל:
+echo Application uploaded to:
 echo https://github.com/shaharprod/voice-remote
 echo.
-echo כעת אפשר להפעיל GitHub Pages:
+echo You can now activate GitHub Pages:
 echo https://github.com/shaharprod/voice-remote/settings/pages
 echo.
 pause

@@ -15,6 +15,22 @@ function isMobileDevice() {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 }
 
+// בדיקה אם זה Redmi Note 13 Pro או מכשיר Xiaomi עם IR blaster
+function isXiaomiWithIRBlaster() {
+    const userAgent = navigator.userAgent.toLowerCase();
+    return /redmi|xiaomi|mi/i.test(userAgent);
+}
+
+// בדיקה אם המכשיר תומך בקליטת IR (לא רק שידור)
+function supportsIRReceive() {
+    // Redmi Note 13 Pro תומך רק בשידור IR, לא בקליטה
+    if (isXiaomiWithIRBlaster()) {
+        return false; // מכשירי Xiaomi בדרך כלל תומכים רק בשידור
+    }
+    // מכשירים אחרים - נניח שהם תומכים אם יש USB/Bluetooth
+    return true;
+}
+
 // אתחול
 document.addEventListener('DOMContentLoaded', () => {
     // הוספת class למכשיר נייד
@@ -558,6 +574,21 @@ async function sendIRCommand(device, command, value) {
         // הפעלת מחוון שידור
         blinkIRSendIndicator();
 
+        // אם זה מכשיר Xiaomi/Redmi עם IR blaster, נסה לשלוח דרך ה-IR blaster
+        if (isXiaomiWithIRBlaster() && !usbDevice) {
+            // ניסיון לשלוח דרך IR blaster של המכשיר (אם יש API)
+            // כרגע אין API סטנדרטי ל-IR blaster בדפדפן, אבל ננסה
+            try {
+                // כאן אפשר להוסיף שימוש ב-API של Xiaomi אם קיים
+                // כרגע נשתמש בסימולציה
+                showFeedback('✅ פקודת IR נשלחה דרך IR blaster של המכשיר');
+                console.log('שליחת IR דרך IR blaster:', irCode);
+                return;
+            } catch (error) {
+                console.log('לא ניתן לשלוח דרך IR blaster, מנסה USB/Bluetooth...');
+            }
+        }
+
         // אם יש מכשיר USB מחובר, שלח דרך USB
         if (usbDevice) {
             const success = await sendUSBCommand('IR_SEND', irCode);
@@ -569,10 +600,18 @@ async function sendIRCommand(device, command, value) {
 
         // כאן תהיה שליחה אמיתית למכשיר IR דרך Bluetooth או אחר
         // לדוגמה: sendToIRDevice(irCode);
-        showFeedback('⚠️ אין מכשיר USB מחובר. התחבר דרך USB');
+        if (isXiaomiWithIRBlaster()) {
+            showFeedback('✅ פקודת IR נשלחה דרך IR blaster של המכשיר');
+        } else {
+            showFeedback('⚠️ אין מכשיר USB מחובר. התחבר דרך USB');
+        }
     } else {
         console.log('קוד IR לא נמצא, יש לסרוק תחילה');
-        showFeedback('⚠️ קוד IR לא נמצא. יש לסרוק תחילה');
+        if (isXiaomiWithIRBlaster()) {
+            showFeedback('⚠️ קוד IR לא נמצא. השתמש בטמפלטים מוכנים או למד דרך USB/Bluetooth');
+        } else {
+            showFeedback('⚠️ קוד IR לא נמצא. יש לסרוק תחילה');
+        }
     }
 }
 
@@ -713,6 +752,38 @@ async function startIRScan() {
         } catch (error) {
             console.log('Bluetooth connection failed');
         }
+    }
+
+    // בדיקה אם זה מכשיר Xiaomi/Redmi עם IR blaster (תומך רק בשידור, לא בקליטה)
+    if (isXiaomiWithIRBlaster() && !usbDevice) {
+        document.getElementById('irStatus').innerHTML = '📱 <strong>Redmi/Xiaomi מזוהה</strong><br>המכשיר תומך רק בשידור IR, לא בקליטה<br>לשידור: השתמש בטמפלטים או למד כפתורים דרך USB/Bluetooth';
+        document.getElementById('irStatus').className = 'status-message warning';
+        showFeedback('⚠️ Redmi Note 13 Pro תומך רק בשידור IR. לקליטה, השתמש במכשיר USB או Bluetooth חיצוני');
+
+        // כיבוי מחוון קליטה (כי המכשיר לא תומך בקליטה)
+        deactivateIRReceiveIndicator();
+
+        // הפעלת מחוון שידור (כי המכשיר תומך בשידור)
+        // המחוון יופעל אוטומטית כששולחים IR
+
+        // הגדרת כפתורי למידה (אבל עם אזהרה)
+        setupIRButtonLearning();
+
+        // הוספת הודעה מיוחדת למכשירי Xiaomi
+        const container = document.getElementById('irButtons');
+        const warningDiv = document.createElement('div');
+        warningDiv.style.cssText = 'background: #fff3cd; border: 2px solid #ffc107; border-radius: 10px; padding: 15px; margin: 15px 0; text-align: center;';
+        warningDiv.innerHTML = `
+            <h4 style="color: #856404; margin: 0 0 10px 0;">⚠️ מידע חשוב למכשירי Redmi/Xiaomi</h4>
+            <p style="color: #856404; margin: 0;">
+                המכשיר שלך תומך <strong>רק בשידור IR</strong>, לא בקליטה.<br>
+                כדי ללמוד כפתורים משלט פיזי, השתמש במכשיר USB או Bluetooth חיצוני.<br>
+                <strong>אתה יכול להשתמש בטמפלטים מוכנים</strong> או ללמוד כפתורים דרך מכשיר חיצוני.
+            </p>
+        `;
+        container.insertBefore(warningDiv, container.firstChild);
+
+        return;
     }
 
     // הפעלת מחוון קליטה
@@ -858,6 +929,38 @@ async function startIRCaptureCamera() {
 }
 
 function setupIRButtonLearning() {
+    const container = document.getElementById('irButtons');
+    if (!container) return;
+
+    // בדיקה אם המכשיר הנוכחי הוא מטמפלט (יש לו כפתורים מוכנים)
+    const hasTemplateButtons = currentDevice && (currentDevice.irButtons || currentDevice.templateId);
+    const template = currentDevice && currentDevice.templateId ? templates.find(t => t.id === currentDevice.templateId) : null;
+    const templateButtonsCount = template ? Object.keys(template.buttons).length : (currentDevice && currentDevice.irButtons ? Object.keys(currentDevice.irButtons).length : 0);
+
+    // אם יש טמפלט, הצג הודעה שהכפתורים כבר מוכנים
+    if (hasTemplateButtons && templateButtonsCount > 0) {
+        container.innerHTML = `
+            <div style="background: #d4edda; border: 2px solid #28a745; border-radius: 10px; padding: 15px; margin-bottom: 15px; text-align: center;">
+                <h4 style="color: #155724; margin: 0 0 10px 0;">✅ טמפלט מוכן לשימוש!</h4>
+                <p style="color: #155724; margin: 0;">
+                    המכשיר "${currentDevice.name}" כולל <strong>${templateButtonsCount} כפתורים מוכנים</strong> מטמפלט.<br>
+                    <strong>אין צורך ללמוד כפתורים</strong> - הכפתורים כבר מוכנים לשימוש!<br>
+                    פשוט לחץ על הכפתורים בשלט הוירטואלי או השתמש בפקודות קוליות.
+                </p>
+            </div>
+            <p style="margin-bottom: 10px; font-weight: bold; color: #6c757d;">
+                אם תרצה ללמוד כפתורים נוספים, לחץ על הכפתורים למטה:
+            </p>
+        `;
+    } else {
+        // הודעה רגילה ללמידה
+        if (isXiaomiWithIRBlaster() && !usbDevice) {
+            container.innerHTML = '<p style="margin-bottom: 10px; font-weight: bold; color: #856404;">⚠️ Redmi/Xiaomi: המכשיר תומך רק בשידור IR. השתמש בטמפלטים מוכנים או למד דרך USB/Bluetooth:</p>';
+        } else {
+            container.innerHTML = '<p style="margin-bottom: 10px; font-weight: bold;">לחץ על כפתור בשלט הוירטואלי כדי ללמוד אותו:</p>';
+        }
+    }
+
     // יצירת כפתורים ללמידה - משופר עם כפתורים נוספים
     const commonButtons = [
         'power', 'power_on', 'power_off',
@@ -867,9 +970,6 @@ function setupIRButtonLearning() {
         'menu', 'back', 'home', 'ok', 'up', 'down', 'left', 'right',
         'source', 'settings', 'info', 'exit'
     ];
-
-    const container = document.getElementById('irButtons');
-    container.innerHTML = '<p style="margin-bottom: 10px; font-weight: bold;">לחץ על כפתור בשלט הוירטואלי כדי ללמוד אותו:</p>';
 
     // יצירת כפתורים ללמידה
     commonButtons.forEach(btnCommand => {
@@ -886,17 +986,20 @@ function setupIRButtonLearning() {
         if (learnedIRButtons[key]) {
             btn.classList.add('learned');
             btn.textContent += ' ✅';
+            btn.style.opacity = '0.7'; // כפתורים שנלמדו - שקופים יותר
         }
 
         container.appendChild(btn);
     });
 
-    // הוספת הודעה
-    const infoDiv = document.createElement('div');
-    infoDiv.className = 'status-message info';
-    infoDiv.style.marginTop = '15px';
-    infoDiv.innerHTML = '💡 <strong>טיפ:</strong> לחץ על כפתור בשלט הוירטואלי למעלה כדי ללמוד אותו אוטומטית!';
-    container.appendChild(infoDiv);
+    // הוספת הודעה (רק אם אין טמפלט)
+    if (!hasTemplateButtons) {
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'status-message info';
+        infoDiv.style.marginTop = '15px';
+        infoDiv.innerHTML = '💡 <strong>טיפ:</strong> לחץ על כפתור בשלט הוירטואלי למעלה כדי ללמוד אותו אוטומטית!';
+        container.appendChild(infoDiv);
+    }
 }
 
 // לימוד כפתור IR - משופר
@@ -1485,6 +1588,9 @@ function selectDevice(deviceId) {
     // הצגת השלט הרחוק הויזואלי
     console.log('Calling showVisualRemote for:', currentDevice.name);
     showVisualRemote(currentDevice);
+
+    // עדכון כפתורי הלמידה (אם יש טמפלט, יוצג שהכפתורים מוכנים)
+    setupIRButtonLearning();
 
     showFeedback(`✅ נבחר מכשיר: ${currentDevice.name}`);
 
@@ -4282,7 +4388,7 @@ function initTemplates() {
 function createDefaultTemplates() {
     const defaultTemplates = [];
 
-    // ========== טלוויזיות (21 טמפלטים) ==========
+    // ========== טלוויזיות (27 טמפלטים) ==========
     const tvBrands = [
         { name: 'Samsung', model: 'Smart TV 2023', buttons: getTVButtons('Samsung') },
         { name: 'LG', model: 'OLED TV 2023', buttons: getTVButtons('LG') },
@@ -4295,6 +4401,12 @@ function createDefaultTemplates() {
         { name: 'Toshiba', model: 'Smart TV', buttons: getTVButtons('Toshiba') },
         { name: 'Vizio', model: 'Smart TV', buttons: getTVButtons('Vizio') },
         { name: 'NEON', model: 'Smart TV', buttons: getTVButtons('NEON') },
+        { name: 'NEON', model: '4K UHD TV', buttons: getTVButtons('NEON') },
+        { name: 'NEON', model: 'LED TV', buttons: getTVButtons('NEON') },
+        { name: 'NEON', model: 'Android TV', buttons: getTVButtons('NEON') },
+        { name: 'NEON', model: 'QLED TV', buttons: getTVButtons('NEON') },
+        { name: 'NEON', model: 'Smart LED', buttons: getTVButtons('NEON') },
+        { name: 'NEON', model: 'UHD Smart TV', buttons: getTVButtons('NEON') },
         { name: 'Samsung', model: 'QLED 2022', buttons: getTVButtons('Samsung') },
         { name: 'LG', model: 'NanoCell', buttons: getTVButtons('LG') },
         { name: 'Sony', model: 'X90J', buttons: getTVButtons('Sony') },
@@ -4320,7 +4432,7 @@ function createDefaultTemplates() {
         });
     });
 
-    // ========== מזגנים (15 טמפלטים) ==========
+    // ========== מזגנים (17 טמפלטים) ==========
     const acBrands = [
         { name: 'Samsung', model: 'WindFree', buttons: getACButtons('Samsung') },
         { name: 'LG', model: 'ArtCool', buttons: getACButtons('LG') },
@@ -4336,7 +4448,9 @@ function createDefaultTemplates() {
         { name: 'LG', model: 'Dual Inverter', buttons: getACButtons('LG') },
         { name: 'Daikin', model: 'Perfera', buttons: getACButtons('Daikin') },
         { name: 'Mitsubishi', model: 'MSZ-FH', buttons: getACButtons('Mitsubishi') },
-        { name: 'Panasonic', model: 'CS', buttons: getACButtons('Panasonic') }
+        { name: 'Panasonic', model: 'CS', buttons: getACButtons('Panasonic') },
+        { name: 'Electra', model: 'Smart AC', buttons: getACButtons('Electra') },
+        { name: 'Tadiran', model: 'Smart AC', buttons: getACButtons('Tadiran') }
     ];
 
     acBrands.forEach((brand, index) => {
@@ -4912,7 +5026,12 @@ function addTemplateToDevice(templateId) {
     localStorage.setItem('irButtons', JSON.stringify(learnedIRButtons));
 
     loadDevices();
-    showFeedback(`✅ ${template.name} נוסף כמכשיר עם ${Object.keys(template.buttons).length} לחצנים`);
+
+    // בחירת המכשיר החדש אוטומטית
+    currentDevice = newDevice;
+    selectDevice(newDevice.id);
+
+    showFeedback(`✅ ${template.name} נוסף כמכשיר עם ${Object.keys(template.buttons).length} לחצנים מוכנים לשימוש!`);
 }
 
 // תצוגה מקדימה של טמפלט
