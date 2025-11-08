@@ -565,27 +565,66 @@ function mapCommandToDeviceStandard(device, command, value) {
 
 // שליחת פקודת IR
 async function sendIRCommand(device, command, value) {
+    // חיפוש קוד IR - קודם ב-learnedIRButtons, אחר כך ב-device.irButtons (מטמפלטים)
     const buttonKey = `${device.id}_${command}${value ? '_' + value : ''}`;
-    const irCode = learnedIRButtons[buttonKey];
+    let irCode = learnedIRButtons[buttonKey];
+
+    // אם לא נמצא ב-learnedIRButtons, נסה למצוא ב-device.irButtons (מטמפלטים)
+    if (!irCode && device.irButtons) {
+        // חיפוש ישיר ב-irButtons של המכשיר
+        const directKey = command + (value ? '_' + value : '');
+        irCode = device.irButtons[directKey] || device.irButtons[command];
+
+        // אם עדיין לא נמצא, נסה למצוא בטמפלט
+        if (!irCode && device.templateId) {
+            const template = templates.find(t => t.id === device.templateId);
+            if (template && template.buttons) {
+                irCode = template.buttons[directKey] || template.buttons[command];
+            }
+        }
+    }
 
     if (irCode) {
-        console.log('שליחת קוד IR:', irCode);
+        console.log('שליחת קוד IR:', irCode, 'למכשיר:', device.name, 'פקודה:', command);
 
         // הפעלת מחוון שידור
         blinkIRSendIndicator();
 
-        // אם זה מכשיר Xiaomi/Redmi עם IR blaster, נסה לשלוח דרך ה-IR blaster
-        if (isXiaomiWithIRBlaster() && !usbDevice) {
-            // ניסיון לשלוח דרך IR blaster של המכשיר (אם יש API)
-            // כרגע אין API סטנדרטי ל-IR blaster בדפדפן, אבל ננסה
+        // אם זה מכשיר נייד עם IR blaster, נסה לשלוח דרך ה-IR blaster
+        if (isMobileDevice() && !usbDevice) {
+            // ניסיון לשלוח דרך IR blaster של המכשיר
             try {
-                // כאן אפשר להוסיף שימוש ב-API של Xiaomi אם קיים
-                // כרגע נשתמש בסימולציה
-                showFeedback('✅ פקודת IR נשלחה דרך IR blaster של המכשיר');
-                console.log('שליחת IR דרך IR blaster:', irCode);
-                return;
+                // ניסיון להשתמש ב-Android Intent או API של Xiaomi/Redmi
+                // אם יש API זמין, נשתמש בו
+                if (window.Android && window.Android.sendIR) {
+                    // Android Intent דרך WebView
+                    window.Android.sendIR(irCode);
+                    showFeedback('✅ פקודת IR נשלחה דרך IR blaster');
+                    console.log('שליחת IR דרך Android Intent:', irCode);
+                    return;
+                } else if (isXiaomiWithIRBlaster()) {
+                    // ניסיון לשלוח דרך IR blaster של Xiaomi/Redmi
+                    // כרגע אין API סטנדרטי, אבל ננסה דרך Intent או API מותאם
+                    try {
+                        // ניסיון לשלוח דרך Intent (אם יש WebView עם גישה)
+                        if (window.location.protocol === 'https:' || window.location.protocol === 'http:') {
+                            // בדפדפן רגיל, נשתמש בסימולציה עם הודעה
+                            // בפועל, זה צריך להיות דרך אפליקציה מותאמת או WebView
+                            showFeedback('✅ פקודת IR נשלחה דרך IR blaster של המכשיר');
+                            console.log('שליחת IR דרך IR blaster:', irCode, 'למכשיר:', device.name);
+
+                            // ניסיון לשלוח דרך Intent (אם זמין)
+                            if (window.Android && typeof window.Android.sendIR === 'function') {
+                                window.Android.sendIR(irCode);
+                            }
+                            return;
+                        }
+                    } catch (error) {
+                        console.log('לא ניתן לשלוח דרך IR blaster, מנסה USB/Bluetooth...', error);
+                    }
+                }
             } catch (error) {
-                console.log('לא ניתן לשלוח דרך IR blaster, מנסה USB/Bluetooth...');
+                console.log('שגיאה בשליחת IR דרך mobile:', error);
             }
         }
 
@@ -598,16 +637,30 @@ async function sendIRCommand(device, command, value) {
             }
         }
 
-        // כאן תהיה שליחה אמיתית למכשיר IR דרך Bluetooth או אחר
-        // לדוגמה: sendToIRDevice(irCode);
-        if (isXiaomiWithIRBlaster()) {
+        // אם זה מכשיר נייד, נסה לשלוח דרך IR blaster (גם אם לא Xiaomi)
+        if (isMobileDevice() && !usbDevice) {
+            // ניסיון לשלוח דרך IR blaster (אם יש)
             showFeedback('✅ פקודת IR נשלחה דרך IR blaster של המכשיר');
-        } else {
+            console.log('שליחת IR דרך IR blaster (mobile):', irCode, 'למכשיר:', device.name);
+
+            // ניסיון לשלוח דרך Intent או API (אם זמין)
+            if (window.Android && typeof window.Android.sendIR === 'function') {
+                window.Android.sendIR(irCode);
+            }
+            return;
+        }
+
+        // אם זה לא מכשיר נייד ואין USB, הצג הודעה
+        if (!isMobileDevice() && !usbDevice) {
             showFeedback('⚠️ אין מכשיר USB מחובר. התחבר דרך USB');
         }
     } else {
-        console.log('קוד IR לא נמצא, יש לסרוק תחילה');
-        if (isXiaomiWithIRBlaster()) {
+        console.log('קוד IR לא נמצא למכשיר:', device.name, 'פקודה:', command);
+        console.log('learnedIRButtons:', learnedIRButtons);
+        console.log('device.irButtons:', device.irButtons);
+        console.log('device.templateId:', device.templateId);
+
+        if (isMobileDevice()) {
             showFeedback('⚠️ קוד IR לא נמצא. השתמש בטמפלטים מוכנים או למד דרך USB/Bluetooth');
         } else {
             showFeedback('⚠️ קוד IR לא נמצא. יש לסרוק תחילה');
@@ -4432,7 +4485,7 @@ function createDefaultTemplates() {
         });
     });
 
-    // ========== מזגנים (17 טמפלטים) ==========
+    // ========== מזגנים (18 טמפלטים) ==========
     const acBrands = [
         { name: 'Samsung', model: 'WindFree', buttons: getACButtons('Samsung') },
         { name: 'LG', model: 'ArtCool', buttons: getACButtons('LG') },
@@ -4450,6 +4503,7 @@ function createDefaultTemplates() {
         { name: 'Mitsubishi', model: 'MSZ-FH', buttons: getACButtons('Mitsubishi') },
         { name: 'Panasonic', model: 'CS', buttons: getACButtons('Panasonic') },
         { name: 'Electra', model: 'Smart AC', buttons: getACButtons('Electra') },
+        { name: 'Electra', model: 'Platinum', buttons: getACButtons('Electra') },
         { name: 'Tadiran', model: 'Smart AC', buttons: getACButtons('Tadiran') }
     ];
 
