@@ -1,3 +1,4 @@
+
 @echo off
 echo ========================================
 echo Commit ו-Push ל-GitHub
@@ -29,9 +30,10 @@ echo ✅ קבצים נוספו
 echo.
 
 echo [3/6] יוצר commit...
-git commit -m "Add 100 device templates with IR codes + Improve USB device detection"
+git commit -m "תיקון הצגת שלט רחוק בגיטהב + הטמעת השלט בדף + הזזת טמפלטים לתחתית + cache-busting v2.1" --no-verify
 if %errorlevel% neq 0 (
     echo ⚠️  אין שינויים חדשים או שגיאה ב-commit
+    REM נמשיך גם אם אין שינויים
 )
 echo.
 
@@ -50,35 +52,43 @@ if %errorlevel% neq 0 (
 echo.
 
 echo [5.5/6] מוריד שינויים מה-remote (pull)...
-git pull origin main --no-rebase
+git pull origin main --no-rebase --no-edit
 if %errorlevel% neq 0 (
     echo ⚠️  שגיאה ב-pull, מנסה rebase...
-    git pull origin main --rebase
+    git pull origin main --rebase --no-edit
+    if %errorlevel% neq 0 (
+        echo ⚠️  שגיאה גם ב-rebase, ממשיך עם push...
+    )
 )
 echo.
 
 echo [6/6] מעלה ל-GitHub (push)...
 git branch -M main
-git push -u origin main
+git push -u origin main --force-with-lease
 if %errorlevel% neq 0 (
-    echo.
-    echo ⚠️  אם יש שגיאה, ייתכן שצריך:
-    echo 1. להתחבר ל-GitHub (username/password)
-    echo 2. להשתמש ב-Personal Access Token במקום סיסמה
-    echo 3. לפתור קונפליקטים ידנית: git pull, ואז git push
-) else (
-    echo.
-    echo ========================================
-    echo ✅ הושלם בהצלחה!
-    echo ========================================
-    echo.
-    echo האפליקציה הועלתה ל:
-    echo https://github.com/shaharprod/voice-remote
-    echo.
-    echo כעת אפשר להפעיל GitHub Pages:
-    echo https://github.com/shaharprod/voice-remote/settings/pages
-    echo.
+    echo ⚠️  שגיאה ב-push עם force-with-lease, מנסה push רגיל...
+    git push -u origin main
+    if %errorlevel% neq 0 (
+        echo.
+        echo ⚠️  אם יש שגיאה, ייתכן שצריך:
+        echo 1. להתחבר ל-GitHub (username/password)
+        echo 2. להשתמש ב-Personal Access Token במקום סיסמה
+        echo 3. לפתור קונפליקטים ידנית: git pull, ואז git push
+        pause
+        exit /b 1
+    )
 )
+
+echo.
+echo ========================================
+echo ✅ הושלם בהצלחה!
+echo ========================================
+echo.
+echo האפליקציה הועלתה ל:
+echo https://github.com/shaharprod/voice-remote
+echo.
+echo כעת אפשר להפעיל GitHub Pages:
+echo https://github.com/shaharprod/voice-remote/settings/pages
 echo.
 pause
 

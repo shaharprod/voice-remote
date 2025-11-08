@@ -10,6 +10,73 @@ body {
     min-height: 100vh;
     padding: 20px;
     direction: rtl;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
+}
+
+/* שיפורים למכשירים ניידים */
+body.mobile-device {
+    padding: 10px;
+}
+
+body.mobile-device .container {
+    border-radius: 10px;
+}
+
+body.mobile-device .remote-btn {
+    min-height: 50px;
+    font-size: 1.1em;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(102, 126, 234, 0.3);
+}
+
+body.mobile-device .btn-primary,
+body.mobile-device .btn-secondary {
+    min-height: 44px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(102, 126, 234, 0.3);
+}
+
+/* וידוא שהשלט הרחוק גלוי במכשירים ניידים */
+body.mobile-device #visualRemote {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 20px auto !important;
+    padding: 15px !important;
+    position: relative !important;
+    z-index: 1 !important;
+    min-height: 300px !important;
+    max-height: none !important;
+    overflow-y: visible !important;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%) !important;
+}
+
+body.mobile-device .visual-remote-container {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 20px auto !important;
+    padding: 15px !important;
+    min-height: 300px !important;
+    max-height: none !important;
+    overflow-y: visible !important;
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+body.mobile-device .visual-remote {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 15px !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 
 .container {
@@ -387,6 +454,1012 @@ h2 {
     
     .connection-tabs {
         flex-direction: column;
+    }
+}
+
+/* שלט רחוק ויזואלי */
+.visual-remote-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin: 20px auto;
+    position: relative;
+    z-index: 1;
+    max-height: none;
+    overflow-y: visible;
+    visibility: visible;
+    opacity: 1;
+}
+
+.visual-remote {
+    background: #2c3e50;
+    border-radius: 25px;
+    padding: 25px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+    max-width: 400px;
+    width: 100%;
+}
+
+/* עיצובים ספציפיים לפי סוג מכשיר */
+
+/* כותרת מכשיר */
+.remote-header {
+    text-align: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid rgba(255,255,255,0.3);
+}
+
+.remote-header h3 {
+    color: white;
+    font-size: 1.5em;
+    margin: 0;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+.remote-header div {
+    color: rgba(255,255,255,0.8);
+    font-size: 0.9em;
+    margin-top: 5px;
+}
+
+/* טלוויזיה - עיצוב כחול-סגול */
+.remote-type-tv .visual-remote,
+.visual-remote.remote-type-tv {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    border: 3px solid #4facfe;
+}
+
+.remote-type-tv .remote-header {
+    border-bottom-color: rgba(79, 172, 254, 0.5);
+}
+
+.remote-container-tv {
+    background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+}
+
+/* מזגן - עיצוב כחול-לבן (קריר) */
+.remote-type-ac .visual-remote,
+.visual-remote.remote-type-ac {
+    background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+    border: 3px solid #00b894;
+}
+
+.remote-container-ac {
+    background: linear-gradient(135deg, #e0f2f1 0%, #b2dfdb 50%, #80cbc4 100%);
+}
+
+.remote-type-ac .remote-header {
+    border-bottom-color: rgba(0, 184, 148, 0.5);
+}
+
+/* מערכת שמע - עיצוב שחור-זהב */
+.remote-type-audio .visual-remote,
+.visual-remote.remote-type-audio {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    border: 3px solid #f39c12;
+}
+
+.remote-container-audio {
+    background: linear-gradient(135deg, #2c2c2c 0%, #1a1a1a 100%);
+}
+
+.remote-type-audio .remote-header {
+    border-bottom-color: rgba(243, 156, 18, 0.5);
+}
+
+/* תאורה - עיצוב צהוב-כתום (חם) */
+.remote-type-light .visual-remote,
+.visual-remote.remote-type-light {
+    background: linear-gradient(135deg, #fdcb6e 0%, #e17055 100%);
+    border: 3px solid #fdcb6e;
+}
+
+.remote-container-light {
+    background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 50%, #e17055 100%);
+}
+
+.remote-type-light .remote-header {
+    border-bottom-color: rgba(253, 203, 110, 0.5);
+    color: #2d3436;
+}
+
+.remote-type-light .remote-header h3 {
+    color: #2d3436;
+    text-shadow: 2px 2px 4px rgba(255,255,255,0.5);
+}
+
+.remote-type-light .remote-header div {
+    color: rgba(45, 52, 54, 0.8);
+}
+
+/* סטרימר - עיצוב שחור-אדום */
+.remote-type-streamer .visual-remote,
+.visual-remote.remote-type-streamer {
+    background: linear-gradient(135deg, #2d3436 0%, #636e72 100%);
+    border: 3px solid #d63031;
+}
+
+.remote-container-streamer {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d3436 100%);
+}
+
+/* מאוורר - עיצוב כחול בהיר */
+.remote-type-fan .visual-remote,
+.visual-remote.remote-type-fan {
+    background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+    border: 3px solid #00cec9;
+}
+
+.remote-container-fan {
+    background: linear-gradient(135deg, #dfe6e9 0%, #b2bec3 100%);
+}
+
+/* תריסים - עיצוב בז' */
+.remote-type-blinds .visual-remote,
+.visual-remote.remote-type-blinds {
+    background: linear-gradient(135deg, #a0855b 0%, #6c5ce7 100%);
+    border: 3px solid #a0855b;
+}
+
+.remote-container-blinds {
+    background: linear-gradient(135deg, #ddd6d0 0%, #a0855b 100%);
+}
+
+/* דלתות - עיצוב כסף-אפור */
+.remote-type-door .visual-remote,
+.visual-remote.remote-type-door {
+    background: linear-gradient(135deg, #636e72 0%, #2d3436 100%);
+    border: 3px solid #b2bec3;
+}
+
+.remote-container-door {
+    background: linear-gradient(135deg, #dfe6e9 0%, #b2bec3 100%);
+}
+
+/* אבטחה - עיצוב אדום-שחור */
+.remote-type-security .visual-remote,
+.visual-remote.remote-type-security {
+    background: linear-gradient(135deg, #2d3436 0%, #1a1a1a 100%);
+    border: 3px solid #d63031;
+}
+
+.remote-container-security {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d3436 100%);
+}
+
+/* תנור - עיצוב אדום-כתום (חם) */
+.remote-type-heater .visual-remote,
+.visual-remote.remote-type-heater {
+    background: linear-gradient(135deg, #e17055 0%, #d63031 100%);
+    border: 3px solid #fdcb6e;
+}
+
+.remote-container-heater {
+    background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 50%, #e17055 100%);
+}
+
+/* מקרן - עיצוב שחור-כחול */
+.remote-type-projector .visual-remote,
+.visual-remote.remote-type-projector {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d3436 100%);
+    border: 3px solid #0984e3;
+}
+
+.remote-container-projector {
+    background: linear-gradient(135deg, #0f2027 0%, #203a43 100%);
+}
+
+/* מצלמה - עיצוב שחור-אפור */
+.remote-type-camera .visual-remote,
+.visual-remote.remote-type-camera {
+    background: linear-gradient(135deg, #2d3436 0%, #636e72 100%);
+    border: 3px solid #00b894;
+}
+
+.remote-container-camera {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d3436 100%);
+}
+
+/* Smart Hub - עיצוב סגול-כחול */
+.remote-type-smart_hub .visual-remote,
+.visual-remote.remote-type-smart_hub {
+    background: linear-gradient(135deg, #6c5ce7 0%, #0984e3 100%);
+    border: 3px solid #a29bfe;
+}
+
+.remote-container-smart_hub {
+    background: linear-gradient(135deg, #2d3436 0%, #636e72 100%);
+}
+
+.remote-numbers {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.remote-navigation {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.nav-middle {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.remote-controls {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.remote-features {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.remote-device-specific {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 8px;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 2px solid rgba(255,255,255,0.2);
+}
+
+/* פריסות שונות לפי סוג מכשיר */
+
+/* מזגן - פריסה אנכית עם כפתורי טמפרטורה גדולים */
+.remote-type-ac .remote-controls {
+    grid-template-columns: 1fr;
+    gap: 15px;
+}
+
+.remote-type-ac .remote-btn.power-btn {
+    grid-column: span 1;
+    font-size: 1.8em;
+    padding: 20px;
+}
+
+/* תאורה - פריסה עם כפתורי צבעים גדולים */
+.remote-type-light .remote-controls {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.remote-type-light .remote-device-specific {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+/* מערכת שמע - פריסה עם כפתורי עוצמה גדולים */
+.remote-type-audio .remote-controls {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.remote-type-audio .remote-btn.power-btn {
+    grid-column: span 2;
+}
+
+/* סטרימר - פריסה עם כפתורי נגינה גדולים */
+.remote-type-streamer .remote-controls {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.remote-type-streamer .remote-btn.power-btn {
+    grid-column: span 3;
+}
+
+/* מאוורר - פריסה עם כפתורי מהירות */
+.remote-type-fan .remote-controls {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.remote-type-fan .remote-device-specific {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+/* תריסים - פריסה אנכית */
+.remote-type-blinds .remote-controls {
+    grid-template-columns: 1fr;
+    gap: 12px;
+}
+
+.remote-type-blinds .remote-btn {
+    min-height: 60px;
+    font-size: 1.3em;
+}
+
+/* דלתות - פריסה מינימלית */
+.remote-type-door .remote-controls {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.remote-type-door .remote-btn {
+    min-height: 70px;
+    font-size: 1.5em;
+}
+
+/* אבטחה - פריסה עם כפתור פאניקה גדול */
+.remote-type-security .remote-controls {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.remote-type-security .remote-btn[data-command="panic"] {
+    grid-column: span 2;
+    background: linear-gradient(135deg, #d63031 0%, #e17055 100%);
+    font-size: 1.8em;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+/* תנור - פריסה עם כפתורי טמפרטורה */
+.remote-type-heater .remote-controls {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.remote-type-heater .remote-btn.power-btn {
+    grid-column: span 2;
+}
+
+/* מקרן - פריסה עם כפתורי זום */
+.remote-type-projector .remote-controls {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.remote-type-projector .remote-device-specific {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+/* מצלמה - פריסה עם כפתורי ניווט */
+.remote-type-camera .remote-controls {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.remote-type-camera .remote-device-specific {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+/* Smart Hub - פריסה עם כפתורי סצנות */
+.remote-type-smart_hub .remote-controls {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.remote-type-smart_hub .remote-device-specific {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.remote-btn {
+    padding: 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-size: 1.2em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    min-height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.remote-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.4);
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+}
+
+.remote-btn:active {
+    transform: translateY(0) scale(0.95);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+
+/* אנימציה ללחיצה על כפתור */
+@keyframes buttonPress {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* אינדיקטור לחיצה על כפתור */
+.button-press-indicator {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background: #00b894;
+    color: white;
+    border-radius: 50%;
+    width: 25px;
+    height: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: bold;
+    z-index: 1000;
+    animation: buttonPress 0.5s ease;
+    box-shadow: 0 2px 10px rgba(0, 184, 148, 0.5);
+    pointer-events: none;
+}
+
+/* אפקט זוהר לכפתורים שנלחצו */
+.remote-btn.pressed {
+    animation: buttonGlow 0.5s ease;
+}
+
+@keyframes buttonGlow {
+    0%, 100% {
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(102, 126, 234, 0.8), 0 0 40px rgba(102, 126, 234, 0.4);
+        filter: brightness(1.2);
+    }
+}
+
+/* חיווי ויזואלי לשלט הרחוק */
+.visual-remote-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10000;
+}
+
+.remote-status-indicator {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+    color: white;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    font-weight: bold;
+    box-shadow: 0 2px 10px rgba(0, 184, 148, 0.3);
+    animation: statusPulse 2s infinite;
+    z-index: 100;
+}
+
+@keyframes statusPulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
+}
+
+/* אפקט ripple לכפתורים */
+.remote-btn {
+    position: relative;
+    overflow: hidden;
+}
+
+.remote-btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.5);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.remote-btn:active::after {
+    width: 300px;
+    height: 300px;
+}
+
+.remote-btn.number-btn {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    font-size: 1.5em;
+}
+
+.remote-btn.number-btn:hover {
+    background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+}
+
+.remote-btn.nav-btn {
+    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    font-size: 1.3em;
+    min-width: 60px;
+}
+
+.remote-btn.nav-btn:hover {
+    background: linear-gradient(135deg, #fee140 0%, #fa709a 100%);
+}
+
+.remote-btn.ok-btn {
+    background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
+    font-size: 1.1em;
+    padding: 20px;
+    min-width: 80px;
+}
+
+.remote-btn.ok-btn:hover {
+    background: linear-gradient(135deg, #330867 0%, #30cfd0 100%);
+}
+
+.remote-btn.control-btn {
+    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+    color: #333;
+    font-size: 1.4em;
+}
+
+.remote-btn.control-btn:hover {
+    background: linear-gradient(135deg, #fed6e3 0%, #a8edea 100%);
+}
+
+.remote-btn.power-btn {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+    color: white;
+    grid-column: span 3;
+}
+
+.remote-btn.power-btn:hover {
+    background: linear-gradient(135deg, #ee5a6f 0%, #ff6b6b 100%);
+}
+
+.remote-btn.power-on-btn {
+    background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+    color: white;
+    grid-column: span 1;
+}
+
+.remote-btn.power-on-btn:hover {
+    background: linear-gradient(135deg, #00cec9 0%, #00b894 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0, 184, 148, 0.4);
+}
+
+.remote-btn.power-off-btn {
+    background: linear-gradient(135deg, #d63031 0%, #e17055 100%);
+    color: white;
+    grid-column: span 1;
+}
+
+.remote-btn.power-off-btn:hover {
+    background: linear-gradient(135deg, #e17055 0%, #d63031 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(214, 48, 49, 0.4);
+}
+
+.remote-btn.feature-btn {
+    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+    color: #333;
+    font-size: 1.1em;
+    padding: 12px;
+}
+
+.remote-btn.feature-btn:hover {
+    background: linear-gradient(135deg, #fcb69f 0%, #ffecd2 100%);
+}
+
+/* עיצובים ספציפיים לכפתורים לפי סוג מכשיר */
+
+/* טלוויזיה - כפתורים כחולים */
+.remote-type-tv .remote-btn.number-btn {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.remote-type-tv .remote-btn.control-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* מזגן - כפתורים כחולים-ירוקים */
+.remote-type-ac .remote-btn {
+    background: linear-gradient(135deg, #74b9ff 0%, #00b894 100%);
+    color: white;
+}
+
+.remote-type-ac .remote-btn.power-btn {
+    background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+}
+
+/* מערכת שמע - כפתורים שחורים-זהב */
+.remote-type-audio .remote-btn {
+    background: linear-gradient(135deg, #2d3436 0%, #636e72 100%);
+    color: #f39c12;
+    border: 2px solid #f39c12;
+}
+
+.remote-type-audio .remote-btn:hover {
+    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+    color: white;
+}
+
+/* תאורה - כפתורים צהובים-כתומים */
+.remote-type-light .remote-btn {
+    background: linear-gradient(135deg, #fdcb6e 0%, #e17055 100%);
+    color: #2d3436;
+}
+
+.remote-type-light .remote-btn:hover {
+    background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+}
+
+/* סטרימר - כפתורים שחורים-אדומים */
+.remote-type-streamer .remote-btn {
+    background: linear-gradient(135deg, #2d3436 0%, #636e72 100%);
+    color: #d63031;
+    border: 2px solid #d63031;
+}
+
+.remote-type-streamer .remote-btn:hover {
+    background: linear-gradient(135deg, #d63031 0%, #e17055 100%);
+    color: white;
+}
+
+/* מאוורר - כפתורים כחולים בהירים */
+.remote-type-fan .remote-btn {
+    background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+    color: white;
+}
+
+.remote-type-fan .remote-btn:hover {
+    background: linear-gradient(135deg, #00cec9 0%, #74b9ff 100%);
+}
+
+/* תריסים - כפתורים בז' */
+.remote-type-blinds .remote-btn {
+    background: linear-gradient(135deg, #a0855b 0%, #6c5ce7 100%);
+    color: white;
+}
+
+.remote-type-blinds .remote-btn:hover {
+    background: linear-gradient(135deg, #6c5ce7 0%, #a0855b 100%);
+}
+
+/* דלתות - כפתורים כסף */
+.remote-type-door .remote-btn {
+    background: linear-gradient(135deg, #636e72 0%, #2d3436 100%);
+    color: #b2bec3;
+    border: 2px solid #b2bec3;
+}
+
+.remote-type-door .remote-btn:hover {
+    background: linear-gradient(135deg, #b2bec3 0%, #dfe6e9 100%);
+    color: #2d3436;
+}
+
+/* אבטחה - כפתורים אדומים-שחורים */
+.remote-type-security .remote-btn {
+    background: linear-gradient(135deg, #2d3436 0%, #1a1a1a 100%);
+    color: #d63031;
+    border: 2px solid #d63031;
+}
+
+.remote-type-security .remote-btn.power-btn {
+    background: linear-gradient(135deg, #d63031 0%, #e17055 100%);
+    color: white;
+}
+
+.remote-type-security .remote-btn:hover {
+    background: linear-gradient(135deg, #d63031 0%, #e17055 100%);
+    color: white;
+}
+
+/* תנור - כפתורים אדומים-כתומים */
+.remote-type-heater .remote-btn {
+    background: linear-gradient(135deg, #e17055 0%, #d63031 100%);
+    color: white;
+}
+
+.remote-type-heater .remote-btn:hover {
+    background: linear-gradient(135deg, #fdcb6e 0%, #e17055 100%);
+    color: #2d3436;
+}
+
+/* מקרן - כפתורים שחורים-כחולים */
+.remote-type-projector .remote-btn {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d3436 100%);
+    color: #0984e3;
+    border: 2px solid #0984e3;
+}
+
+.remote-type-projector .remote-btn:hover {
+    background: linear-gradient(135deg, #0984e3 0%, #74b9ff 100%);
+    color: white;
+}
+
+/* מצלמה - כפתורים שחורים-ירוקים */
+.remote-type-camera .remote-btn {
+    background: linear-gradient(135deg, #2d3436 0%, #636e72 100%);
+    color: #00b894;
+    border: 2px solid #00b894;
+}
+
+.remote-type-camera .remote-btn:hover {
+    background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+    color: white;
+}
+
+/* Smart Hub - כפתורים סגולים-כחולים */
+.remote-type-smart_hub .remote-btn {
+    background: linear-gradient(135deg, #6c5ce7 0%, #0984e3 100%);
+    color: white;
+}
+
+.remote-type-smart_hub .remote-btn:hover {
+    background: linear-gradient(135deg, #a29bfe 0%, #6c5ce7 100%);
+}
+
+/* חיווי ויזואלי למצלמה */
+#cameraPreviewContainer {
+    margin-top: 20px;
+    text-align: center;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#cameraPreview {
+    width: 100%;
+    max-width: 400px;
+    border-radius: 10px;
+    background: #000;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    border: 3px solid transparent;
+    transition: border-color 0.3s ease;
+}
+
+#cameraPreview.playing {
+    border-color: #00b894;
+    box-shadow: 0 5px 20px rgba(0, 184, 148, 0.4);
+}
+
+#cameraStatus {
+    margin-top: 10px;
+    font-weight: bold;
+    font-size: 1.1em;
+    transition: color 0.3s ease;
+}
+
+/* רספונסיבי */
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+    
+    .container {
+        border-radius: 10px;
+    }
+    
+    header {
+        padding: 20px;
+    }
+    
+    header h1 {
+        font-size: 1.8em;
+    }
+    
+    .main-content {
+        padding: 15px;
+    }
+    
+    section {
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .visual-remote {
+        padding: 15px;
+        max-width: 100%;
+    }
+    
+    .remote-btn {
+        padding: 15px;
+        font-size: 1.1em;
+        min-height: 50px;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: rgba(102, 126, 234, 0.3);
+    }
+    
+    .remote-numbers {
+        gap: 8px;
+    }
+    
+    .remote-controls, .remote-features {
+        gap: 8px;
+    }
+    
+    .remote-navigation {
+        gap: 8px;
+    }
+    
+    .nav-middle {
+        gap: 8px;
+    }
+    
+    #cameraPreview {
+        max-width: 100%;
+    }
+    
+    .device-card {
+        padding: 15px;
+    }
+    
+    .btn-primary, .btn-secondary {
+        padding: 12px 20px;
+        font-size: 0.95em;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: rgba(102, 126, 234, 0.3);
+    }
+    
+    .visual-remote-container {
+        padding: 15px !important;
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 20px auto !important;
+        min-height: 300px !important;
+        max-height: none !important;
+        overflow-y: visible !important;
+        position: relative !important;
+        z-index: 1 !important;
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%) !important;
+    }
+    
+    .visual-remote {
+        width: 100% !important;
+        max-width: 100% !important;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        padding: 15px !important;
+    }
+    
+    .remote-numbers,
+    .remote-navigation,
+    .remote-controls,
+    .remote-features,
+    .remote-device-specific {
+        display: grid !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+    
+    .remote-navigation {
+        display: flex !important;
+    }
+    
+    .remote-status-indicator {
+        font-size: 0.8em;
+        padding: 6px 12px;
+    }
+}
+
+/* מכשירים ניידים קטנים */
+@media (max-width: 480px) {
+    body {
+        padding: 5px;
+    }
+    
+    header h1 {
+        font-size: 1.5em;
+    }
+    
+    .main-content {
+        padding: 10px;
+    }
+    
+    section {
+        padding: 10px;
+    }
+    
+    .visual-remote {
+        padding: 10px;
+    }
+    
+    .remote-btn {
+        padding: 12px;
+        font-size: 1em;
+        min-height: 45px;
+    }
+    
+    .remote-numbers {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+    }
+    
+    .remote-controls {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+    }
+    
+    .remote-features {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+    }
+    
+    .remote-device-specific {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+    }
+    
+    .visual-remote-container {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 20px auto !important;
+        padding: 10px !important;
+        min-height: 250px !important;
+        max-height: none !important;
+        overflow-y: visible !important;
+        position: relative !important;
+        z-index: 1 !important;
+    }
+    
+    .visual-remote {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 10px !important;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+    
+    .remote-numbers,
+    .remote-navigation,
+    .remote-controls,
+    .remote-features,
+    .remote-device-specific {
+        display: grid !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+    
+    .remote-navigation {
+        display: flex !important;
     }
 }
 

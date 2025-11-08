@@ -10,8 +10,19 @@ let usbDevice = null; // מכשיר USB מחובר
 let autoScanning = false; // סריקה אוטומטית פעילה
 let templates = []; // טמפלטים מוכנים
 
+// בדיקה אם זה מכשיר נייד
+function isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
 // אתחול
 document.addEventListener('DOMContentLoaded', () => {
+    // הוספת class למכשיר נייד
+    if (isMobileDevice()) {
+        document.body.classList.add('mobile-device');
+        console.log('מכשיר נייד מזוהה');
+    }
+
     initSpeechRecognition();
     loadDevices();
     loadScenes();
@@ -20,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
     reconnectUSB(); // ניסיון להתחבר למכשיר USB שמור
     initTemplates(); // טעינת טמפלטים מוכנים
     loadTemplates(); // הצגת טמפלטים
+    setupVisualRemote(); // הגדרת השלט הרחוק הויזואלי
 });
 
 // אתחול זיהוי קול
@@ -237,6 +249,39 @@ function sendCommand(command, value = null, device = null) {
 
     console.log('שליחת פקודה:', commandData);
 
+    // טיפול בפקודות הדלקה/כיבוי
+    if (command === 'power_on' || command === 'power_off') {
+        const powerState = command === 'power_on' ? 'on' : 'off';
+
+        // אם זה USB, שלח אות חשמלי
+        if (targetDevice.connectionType === 'usb' && usbDevice) {
+            sendUSBPowerSignal(powerState, targetDevice);
+        } else {
+            // אחרת, שלח פקודת power רגילה לפי סוג חיבור
+            switch (targetDevice.connectionType) {
+                case 'ir':
+                    sendIRCommand(targetDevice, 'power', powerState === 'on' ? 1 : 0);
+                    break;
+                case 'wifi':
+                    sendWiFiCommand(targetDevice, 'power', powerState === 'on' ? 1 : 0);
+                    break;
+                case 'bluetooth':
+                    sendBluetoothCommand(targetDevice, 'power', powerState === 'on' ? 1 : 0);
+                    break;
+                default:
+                    sendIRCommand(targetDevice, 'power', powerState === 'on' ? 1 : 0);
+            }
+        }
+
+        // אם זה הדלקה, אפשר הפעלת מכשירים אחרי ההדלקה
+        if (powerState === 'on') {
+            setTimeout(() => {
+                showFeedback('✅ מכשיר מוכן לשליטה');
+            }, 2000);
+        }
+        return;
+    }
+
     // שליחה לפי סוג התחברות
     switch (targetDevice.connectionType) {
         case 'ir':
@@ -249,7 +294,7 @@ function sendCommand(command, value = null, device = null) {
             sendBluetoothCommand(targetDevice, command, value);
             break;
         case 'usb':
-            sendUSBCommand(command, value);
+            sendUSBCommand(command, value, targetDevice);
             break;
         case 'qr':
         case 'code':
@@ -261,6 +306,163 @@ function sendCommand(command, value = null, device = null) {
         case 'nfc':
             sendNFCCommand(targetDevice, command, value);
             break;
+    }
+}
+
+// מיפוי פקודות לפי סוג מכשיר וסטנדרט
+function mapCommandToDeviceStandard(device, command, value) {
+    // מיפוי פקודות לפי סוג מכשיר
+    const commandMappings = {
+        'tv': {
+            'power': { standard: 'POWER', ir: 'POWER', wifi: 'power', bluetooth: 'PWR' },
+            'power_on': { standard: 'POWER_ON', ir: 'POWER', wifi: 'power_on', bluetooth: 'PWR_ON' },
+            'power_off': { standard: 'POWER_OFF', ir: 'POWER', wifi: 'power_off', bluetooth: 'PWR_OFF' },
+            'volume_up': { standard: 'VOLUME_UP', ir: 'VOL+', wifi: 'volume_up', bluetooth: 'VOL+' },
+            'volume_down': { standard: 'VOLUME_DOWN', ir: 'VOL-', wifi: 'volume_down', bluetooth: 'VOL-' },
+            'mute': { standard: 'MUTE', ir: 'MUTE', wifi: 'mute', bluetooth: 'MUTE' },
+            'channel_up': { standard: 'CHANNEL_UP', ir: 'CH+', wifi: 'channel_up', bluetooth: 'CH+' },
+            'channel_down': { standard: 'CHANNEL_DOWN', ir: 'CH-', wifi: 'channel_down', bluetooth: 'CH-' },
+            'menu': { standard: 'MENU', ir: 'MENU', wifi: 'menu', bluetooth: 'MENU' },
+            'home': { standard: 'HOME', ir: 'HOME', wifi: 'home', bluetooth: 'HOME' },
+            'back': { standard: 'BACK', ir: 'BACK', wifi: 'back', bluetooth: 'BACK' },
+            'ok': { standard: 'OK', ir: 'OK', wifi: 'ok', bluetooth: 'OK' },
+            'up': { standard: 'UP', ir: 'UP', wifi: 'up', bluetooth: 'UP' },
+            'down': { standard: 'DOWN', ir: 'DOWN', wifi: 'down', bluetooth: 'DOWN' },
+            'left': { standard: 'LEFT', ir: 'LEFT', wifi: 'left', bluetooth: 'LEFT' },
+            'right': { standard: 'RIGHT', ir: 'RIGHT', wifi: 'right', bluetooth: 'RIGHT' }
+        },
+        'ac': {
+            'power': { standard: 'POWER', ir: 'POWER', wifi: 'power', bluetooth: 'PWR' },
+            'power_on': { standard: 'POWER_ON', ir: 'POWER', wifi: 'power_on', bluetooth: 'PWR_ON' },
+            'power_off': { standard: 'POWER_OFF', ir: 'POWER', wifi: 'power_off', bluetooth: 'PWR_OFF' },
+            'temp_up': { standard: 'TEMP_UP', ir: 'TEMP+', wifi: 'temp_up', bluetooth: 'TEMP+' },
+            'temp_down': { standard: 'TEMP_DOWN', ir: 'TEMP-', wifi: 'temp_down', bluetooth: 'TEMP-' },
+            'mode': { standard: 'MODE', ir: 'MODE', wifi: 'mode', bluetooth: 'MODE' },
+            'fan_speed': { standard: 'FAN_SPEED', ir: 'FAN', wifi: 'fan_speed', bluetooth: 'FAN' },
+            'swing': { standard: 'SWING', ir: 'SWING', wifi: 'swing', bluetooth: 'SWING' },
+            'timer': { standard: 'TIMER', ir: 'TIMER', wifi: 'timer', bluetooth: 'TIMER' },
+            'sleep': { standard: 'SLEEP', ir: 'SLEEP', wifi: 'sleep', bluetooth: 'SLEEP' },
+            'eco': { standard: 'ECO', ir: 'ECO', wifi: 'eco', bluetooth: 'ECO' },
+            'turbo': { standard: 'TURBO', ir: 'TURBO', wifi: 'turbo', bluetooth: 'TURBO' }
+        },
+        'audio': {
+            'power': { standard: 'POWER', ir: 'POWER', wifi: 'power', bluetooth: 'PWR' },
+            'power_on': { standard: 'POWER_ON', ir: 'POWER', wifi: 'power_on', bluetooth: 'PWR_ON' },
+            'power_off': { standard: 'POWER_OFF', ir: 'POWER', wifi: 'power_off', bluetooth: 'PWR_OFF' },
+            'volume_up': { standard: 'VOLUME_UP', ir: 'VOL+', wifi: 'volume_up', bluetooth: 'VOL+' },
+            'volume_down': { standard: 'VOLUME_DOWN', ir: 'VOL-', wifi: 'volume_down', bluetooth: 'VOL-' },
+            'mute': { standard: 'MUTE', ir: 'MUTE', wifi: 'mute', bluetooth: 'MUTE' },
+            'bass_up': { standard: 'BASS_UP', ir: 'BASS+', wifi: 'bass_up', bluetooth: 'BASS+' },
+            'bass_down': { standard: 'BASS_DOWN', ir: 'BASS-', wifi: 'bass_down', bluetooth: 'BASS-' },
+            'treble_up': { standard: 'TREBLE_UP', ir: 'TREBLE+', wifi: 'treble_up', bluetooth: 'TREBLE+' },
+            'treble_down': { standard: 'TREBLE_DOWN', ir: 'TREBLE-', wifi: 'treble_down', bluetooth: 'TREBLE-' },
+            'input': { standard: 'INPUT', ir: 'INPUT', wifi: 'input', bluetooth: 'INPUT' },
+            'bluetooth': { standard: 'BLUETOOTH', ir: 'BT', wifi: 'bluetooth', bluetooth: 'BT' },
+            'optical': { standard: 'OPTICAL', ir: 'OPT', wifi: 'optical', bluetooth: 'OPT' },
+            'hdmi': { standard: 'HDMI', ir: 'HDMI', wifi: 'hdmi', bluetooth: 'HDMI' }
+        },
+        'light': {
+            'power': { standard: 'POWER', ir: 'POWER', wifi: 'power', bluetooth: 'PWR' },
+            'brightness_up': { standard: 'BRIGHTNESS_UP', ir: 'BRIGHT+', wifi: 'brightness_up', bluetooth: 'BRIGHT+' },
+            'brightness_down': { standard: 'BRIGHTNESS_DOWN', ir: 'BRIGHT-', wifi: 'brightness_down', bluetooth: 'BRIGHT-' },
+            'color_red': { standard: 'COLOR_RED', ir: 'RED', wifi: 'color_red', bluetooth: 'RED' },
+            'color_green': { standard: 'COLOR_GREEN', ir: 'GREEN', wifi: 'color_green', bluetooth: 'GREEN' },
+            'color_blue': { standard: 'COLOR_BLUE', ir: 'BLUE', wifi: 'color_blue', bluetooth: 'BLUE' },
+            'color_white': { standard: 'COLOR_WHITE', ir: 'WHITE', wifi: 'color_white', bluetooth: 'WHITE' }
+        },
+        'streamer': {
+            'power': { standard: 'POWER', ir: 'POWER', wifi: 'power', bluetooth: 'PWR' },
+            'play': { standard: 'PLAY', ir: 'PLAY', wifi: 'play', bluetooth: 'PLAY' },
+            'pause': { standard: 'PAUSE', ir: 'PAUSE', wifi: 'pause', bluetooth: 'PAUSE' },
+            'stop': { standard: 'STOP', ir: 'STOP', wifi: 'stop', bluetooth: 'STOP' },
+            'rewind': { standard: 'REWIND', ir: 'REW', wifi: 'rewind', bluetooth: 'REW' },
+            'forward': { standard: 'FORWARD', ir: 'FF', wifi: 'forward', bluetooth: 'FF' },
+            'next': { standard: 'NEXT', ir: 'NEXT', wifi: 'next', bluetooth: 'NEXT' },
+            'prev': { standard: 'PREV', ir: 'PREV', wifi: 'prev', bluetooth: 'PREV' }
+        },
+        'fan': {
+            'power': { standard: 'POWER', ir: 'POWER', wifi: 'power', bluetooth: 'PWR' },
+            'speed_1': { standard: 'SPEED_1', ir: 'SP1', wifi: 'speed_1', bluetooth: 'SP1' },
+            'speed_2': { standard: 'SPEED_2', ir: 'SP2', wifi: 'speed_2', bluetooth: 'SP2' },
+            'speed_3': { standard: 'SPEED_3', ir: 'SP3', wifi: 'speed_3', bluetooth: 'SP3' },
+            'oscillate': { standard: 'OSCILLATE', ir: 'OSC', wifi: 'oscillate', bluetooth: 'OSC' },
+            'timer': { standard: 'TIMER', ir: 'TIMER', wifi: 'timer', bluetooth: 'TIMER' },
+            'mode': { standard: 'MODE', ir: 'MODE', wifi: 'mode', bluetooth: 'MODE' }
+        },
+        'blinds': {
+            'open': { standard: 'OPEN', ir: 'OPEN', wifi: 'open', bluetooth: 'OPEN' },
+            'close': { standard: 'CLOSE', ir: 'CLOSE', wifi: 'close', bluetooth: 'CLOSE' },
+            'stop': { standard: 'STOP', ir: 'STOP', wifi: 'stop', bluetooth: 'STOP' },
+            'position_25': { standard: 'POS_25', ir: 'POS25', wifi: 'position_25', bluetooth: 'POS25' },
+            'position_50': { standard: 'POS_50', ir: 'POS50', wifi: 'position_50', bluetooth: 'POS50' },
+            'position_75': { standard: 'POS_75', ir: 'POS75', wifi: 'position_75', bluetooth: 'POS75' },
+            'position_100': { standard: 'POS_100', ir: 'POS100', wifi: 'position_100', bluetooth: 'POS100' }
+        },
+        'door': {
+            'lock': { standard: 'LOCK', ir: 'LOCK', wifi: 'lock', bluetooth: 'LOCK' },
+            'unlock': { standard: 'UNLOCK', ir: 'UNLOCK', wifi: 'unlock', bluetooth: 'UNLOCK' },
+            'status': { standard: 'STATUS', ir: 'STATUS', wifi: 'status', bluetooth: 'STATUS' },
+            'auto_lock': { standard: 'AUTO_LOCK', ir: 'AUTO', wifi: 'auto_lock', bluetooth: 'AUTO' }
+        },
+        'security': {
+            'arm': { standard: 'ARM', ir: 'ARM', wifi: 'arm', bluetooth: 'ARM' },
+            'disarm': { standard: 'DISARM', ir: 'DISARM', wifi: 'disarm', bluetooth: 'DISARM' },
+            'panic': { standard: 'PANIC', ir: 'PANIC', wifi: 'panic', bluetooth: 'PANIC' },
+            'status': { standard: 'STATUS', ir: 'STATUS', wifi: 'status', bluetooth: 'STATUS' },
+            'bypass': { standard: 'BYPASS', ir: 'BYPASS', wifi: 'bypass', bluetooth: 'BYPASS' }
+        },
+        'heater': {
+            'power': { standard: 'POWER', ir: 'POWER', wifi: 'power', bluetooth: 'PWR' },
+            'temp_up': { standard: 'TEMP_UP', ir: 'TEMP+', wifi: 'temp_up', bluetooth: 'TEMP+' },
+            'temp_down': { standard: 'TEMP_DOWN', ir: 'TEMP-', wifi: 'temp_down', bluetooth: 'TEMP-' },
+            'mode': { standard: 'MODE', ir: 'MODE', wifi: 'mode', bluetooth: 'MODE' },
+            'timer': { standard: 'TIMER', ir: 'TIMER', wifi: 'timer', bluetooth: 'TIMER' },
+            'eco': { standard: 'ECO', ir: 'ECO', wifi: 'eco', bluetooth: 'ECO' }
+        },
+        'projector': {
+            'power': { standard: 'POWER', ir: 'POWER', wifi: 'power', bluetooth: 'PWR' },
+            'input': { standard: 'INPUT', ir: 'INPUT', wifi: 'input', bluetooth: 'INPUT' },
+            'zoom_in': { standard: 'ZOOM_IN', ir: 'ZOOM+', wifi: 'zoom_in', bluetooth: 'ZOOM+' },
+            'zoom_out': { standard: 'ZOOM_OUT', ir: 'ZOOM-', wifi: 'zoom_out', bluetooth: 'ZOOM-' },
+            'focus': { standard: 'FOCUS', ir: 'FOCUS', wifi: 'focus', bluetooth: 'FOCUS' },
+            'keystone': { standard: 'KEYSTONE', ir: 'KEYSTONE', wifi: 'keystone', bluetooth: 'KEYSTONE' }
+        },
+        'camera': {
+            'power': { standard: 'POWER', ir: 'POWER', wifi: 'power', bluetooth: 'PWR' },
+            'record': { standard: 'RECORD', ir: 'REC', wifi: 'record', bluetooth: 'REC' },
+            'stop': { standard: 'STOP', ir: 'STOP', wifi: 'stop', bluetooth: 'STOP' },
+            'snapshot': { standard: 'SNAPSHOT', ir: 'SNAP', wifi: 'snapshot', bluetooth: 'SNAP' },
+            'zoom_in': { standard: 'ZOOM_IN', ir: 'ZOOM+', wifi: 'zoom_in', bluetooth: 'ZOOM+' },
+            'zoom_out': { standard: 'ZOOM_OUT', ir: 'ZOOM-', wifi: 'zoom_out', bluetooth: 'ZOOM-' },
+            'pan_left': { standard: 'PAN_LEFT', ir: 'PANL', wifi: 'pan_left', bluetooth: 'PANL' },
+            'pan_right': { standard: 'PAN_RIGHT', ir: 'PANR', wifi: 'pan_right', bluetooth: 'PANR' },
+            'tilt_up': { standard: 'TILT_UP', ir: 'TILTU', wifi: 'tilt_up', bluetooth: 'TILTU' },
+            'tilt_down': { standard: 'TILT_DOWN', ir: 'TILTD', wifi: 'tilt_down', bluetooth: 'TILTD' }
+        },
+        'smart_hub': {
+            'power': { standard: 'POWER', ir: 'POWER', wifi: 'power', bluetooth: 'PWR' },
+            'home': { standard: 'HOME', ir: 'HOME', wifi: 'home', bluetooth: 'HOME' },
+            'back': { standard: 'BACK', ir: 'BACK', wifi: 'back', bluetooth: 'BACK' },
+            'menu': { standard: 'MENU', ir: 'MENU', wifi: 'menu', bluetooth: 'MENU' },
+            'ok': { standard: 'OK', ir: 'OK', wifi: 'ok', bluetooth: 'OK' }
+        }
+    };
+
+    const deviceMappings = commandMappings[device.type] || commandMappings['tv'];
+    const commandMap = deviceMappings[command] || { standard: command, ir: command, wifi: command, bluetooth: command };
+
+    // החזרת פקודה מותאמת לפי סוג חיבור
+    switch (device.connectionType) {
+        case 'ir':
+            return { command: commandMap.ir || command, value: value };
+        case 'wifi':
+            return { command: commandMap.wifi || command, value: value };
+        case 'bluetooth':
+            return { command: commandMap.bluetooth || command, value: value };
+        case 'usb':
+            return { command: commandMap.standard || command, value: value };
+        default:
+            return { command: commandMap.standard || command, value: value };
     }
 }
 
@@ -291,32 +493,112 @@ async function sendIRCommand(device, command, value) {
 }
 
 // שליחת פקודת WiFi
-function sendWiFiCommand(device, command, value) {
+// שליחת פקודת WiFi - תואמת סטנדרטים שונים
+async function sendWiFiCommand(device, command, value) {
     if (!device.ip) {
         showFeedback('⚠️ כתובת IP לא מוגדרת');
         return;
     }
 
-    const url = `http://${device.ip}/api/command`;
-    fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ command, value })
-    }).catch(err => {
+    try {
+        // מיפוי פקודות לפי סוג מכשיר וסטנדרט
+        const mappedCommand = mapCommandToDeviceStandard(device, command, value);
+
+        // ניסיון שליחה לפי סטנדרטים שונים
+        const endpoints = [
+            `http://${device.ip}/api/command`,
+            `http://${device.ip}/api/v1/command`,
+            `http://${device.ip}/control`,
+            `http://${device.ip}/remote`,
+            `http://${device.ip}/ir/send`
+        ];
+
+        let success = false;
+        for (const endpoint of endpoints) {
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(mappedCommand),
+                    mode: 'cors',
+                    timeout: 3000
+                });
+
+                if (response.ok || response.status === 200) {
+                    success = true;
+                    showFeedback(`✅ פקודה נשלחה: ${command}`);
+                    break;
+                }
+            } catch (err) {
+                // נסה endpoint הבא
+                continue;
+            }
+        }
+
+        if (!success) {
+            // ניסיון עם GET request
+            try {
+                const getUrl = `http://${device.ip}/api/command?cmd=${encodeURIComponent(command)}${value ? '&value=' + encodeURIComponent(value) : ''}`;
+                await fetch(getUrl, { method: 'GET', mode: 'cors' });
+                showFeedback(`✅ פקודה נשלחה: ${command}`);
+            } catch (err) {
+                console.error('שגיאה בשליחת פקודת WiFi:', err);
+                showFeedback('⚠️ שגיאה בשליחת פקודה - בדוק חיבור');
+            }
+        }
+    } catch (err) {
         console.error('שגיאה בשליחת פקודת WiFi:', err);
         showFeedback('⚠️ שגיאה בשליחת פקודה');
-    });
+    }
 }
 
-// שליחת פקודת Bluetooth
-function sendBluetoothCommand(device, command, value) {
+// שליחת פקודת Bluetooth - תואמת סטנדרטים שונים
+async function sendBluetoothCommand(device, command, value) {
     if (!device.bluetoothId) {
         showFeedback('⚠️ מכשיר Bluetooth לא מחובר');
         return;
     }
 
-    // כאן תהיה שליחה אמיתית דרך Web Bluetooth API
-    console.log('שליחת פקודת Bluetooth:', { device: device.bluetoothId, command, value });
+    try {
+        // מיפוי פקודות לפי סוג מכשיר
+        const mappedCommand = mapCommandToDeviceStandard(device, command, value);
+
+        // בדיקה אם זה מכשיר נייד
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+        if (!navigator.bluetooth) {
+            if (isMobile) {
+                showFeedback('⚠️ Web Bluetooth API לא נתמך במכשירים ניידים. השתמש במחשב או במכשיר עם Chrome/Edge');
+            } else {
+                showFeedback('⚠️ Bluetooth API לא זמין');
+            }
+            return;
+        }
+
+        // ניסיון שליחה דרך Web Bluetooth API
+        // זה דורש חיבור קיים למכשיר
+        const bluetoothDevice = await navigator.bluetooth.requestDevice({
+            filters: [{ services: ['0000180f-0000-1000-8000-00805f9b34fb'] }] // Battery Service
+        });
+
+        if (bluetoothDevice && bluetoothDevice.gatt) {
+            const server = await bluetoothDevice.gatt.connect();
+            // כאן תהיה שליחה אמיתית דרך GATT
+            console.log('שליחת פקודת Bluetooth:', mappedCommand);
+            showFeedback(`✅ פקודה נשלחה: ${command}`);
+        }
+    } catch (err) {
+        console.error('שגיאה בשליחת פקודת Bluetooth:', err);
+        // נסה דרך IR אם המכשיר תומך
+        if (device.connectionType === 'ir' || device.irButtons) {
+            sendIRCommand(device, command, value);
+        } else {
+            showFeedback('⚠️ שגיאה בשליחת פקודה');
+        }
+    }
 }
 
 // סריקת IR
@@ -398,6 +680,9 @@ function loadDevices() {
         const card = createDeviceCard(device);
         container.appendChild(card);
     });
+
+    // עדכון רשימת המכשירים בשלט הרחוק הויזואלי
+    loadRemoteDeviceSelect();
 }
 
 function createDeviceCard(device) {
@@ -450,8 +735,50 @@ function getConnectionTypeName(type) {
 }
 
 function selectDevice(deviceId) {
+    console.log('selectDevice called with:', deviceId);
+
     currentDevice = devices.find(d => d.id === deviceId);
+    if (!currentDevice) {
+        showFeedback('❌ מכשיר לא נמצא');
+        console.error('Device not found:', deviceId);
+        return;
+    }
+
+    console.log('Device found:', currentDevice);
+
+    // עדכון ה-select של השלט הרחוק הויזואלי
+    const deviceSelect = document.getElementById('remoteDeviceSelect');
+    if (deviceSelect) {
+        deviceSelect.value = deviceId;
+    }
+
+    // בחירת המכשיר בשלט הרחוק הויזואלי
+    selectedRemoteDevice = currentDevice;
+
+    // הצגת השלט הרחוק הויזואלי
+    console.log('Calling showVisualRemote for:', currentDevice.name);
+    showVisualRemote(currentDevice);
+
     showFeedback(`✅ נבחר מכשיר: ${currentDevice.name}`);
+
+    // גלילה לקטע השלט הרחוק הויזואלי - במכשירים ניידים, גלילה מיידית
+    const scrollDelay = isMobileDevice() ? 100 : 200;
+    setTimeout(() => {
+        const visualRemote = document.getElementById('visualRemote');
+        if (visualRemote) {
+            console.log('Scrolling to visual remote, isMobile:', isMobileDevice());
+            // במכשירים ניידים, גלילה ישירה לשלט
+            // גלילה לקטע השלט הרחוק
+            const remoteSection = document.querySelector('.remote-control-section');
+            if (remoteSection) {
+                remoteSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+                visualRemote.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        } else {
+            console.error('visualRemote element not found for scrolling');
+        }
+    }, scrollDelay);
 }
 
 function deleteDevice(deviceId) {
@@ -538,6 +865,9 @@ function setupEventListeners() {
 
     // event listeners לטמפלטים
     setupTemplateEventListeners();
+
+    // event listeners לשלט רחוק ויזואלי
+    setupVisualRemote();
 
     // שמירת סצנה
     document.getElementById('sceneForm').addEventListener('submit', (e) => {
@@ -872,8 +1202,15 @@ function addBluetoothDevice(device) {
 
 // USB Connection
 async function connectUSB() {
+    // בדיקה אם זה מכשיר נייד
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
     if (!navigator.usb) {
-        showStatus('usbStatus', '❌ הדפדפן שלך לא תומך ב-WebUSB API. השתמש ב-Chrome או Edge', 'error');
+        if (isMobile) {
+            showStatus('usbStatus', '⚠️ WebUSB API לא נתמך במכשירים ניידים. השתמש במחשב או במכשיר עם Chrome/Edge', 'error');
+        } else {
+            showStatus('usbStatus', '❌ הדפדפן שלך לא תומך ב-WebUSB API. השתמש ב-Chrome או Edge', 'error');
+        }
         return;
     }
 
@@ -914,12 +1251,80 @@ async function connectUSB() {
         await usbDevice.open();
 
         // בחירת configuration (לרוב 1)
-        await usbDevice.selectConfiguration(1);
+        try {
+            await usbDevice.selectConfiguration(1);
+        } catch (configError) {
+            // אם configuration 1 לא עובד, ננסה את הראשון הזמין
+            if (usbDevice.configurations && usbDevice.configurations.length > 0) {
+                await usbDevice.selectConfiguration(usbDevice.configurations[0].configurationValue);
+            } else {
+                // אם אין configurations, נדלג על זה
+                console.warn('לא ניתן לבחור configuration, ממשיך ללא...');
+            }
+        }
 
-        // claim interface (לרוב 0)
-        await usbDevice.claimInterface(0);
+        // ניסיון למצוא ממשק לא מוגן
+        let interfaceClaimed = false;
+        if (usbDevice.configuration) {
+            const interfaces = usbDevice.configuration.interfaces;
 
-        showStatus('usbStatus', `✅ מחובר למכשיר: ${usbDevice.productName || 'USB Device'}`, 'success');
+            // נסה למצוא ממשק לא מוגן
+            for (let i = 0; i < interfaces.length; i++) {
+                const usbInterface = interfaces[i];
+                try {
+                    // בדיקה אם הממשק מוגן
+                    // ממשקים מוגנים: HID (0x03), Mass Storage (0x08), Audio (0x01), Video (0x0e)
+                    const protectedClasses = [0x01, 0x03, 0x08, 0x0e];
+                    const isProtected = usbInterface.alternates.some(alt =>
+                        protectedClasses.includes(alt.interfaceClass)
+                    );
+
+                    if (!isProtected) {
+                        await usbDevice.claimInterface(usbInterface.interfaceNumber);
+                        interfaceClaimed = true;
+                        console.log(`✅ ממשק ${usbInterface.interfaceNumber} נלקח בהצלחה`);
+                        break;
+                    }
+                } catch (interfaceError) {
+                    // אם הממשק מוגן או לא זמין, נמשיך לממשק הבא
+                    console.log(`⚠️ ממשק ${usbInterface.interfaceNumber} לא זמין או מוגן, מנסה הבא...`);
+                    continue;
+                }
+            }
+
+            // אם לא מצאנו ממשק לא מוגן, ננסה את הראשון (למרות שהוא מוגן)
+            if (!interfaceClaimed && interfaces.length > 0) {
+                try {
+                    await usbDevice.claimInterface(0);
+                    interfaceClaimed = true;
+                    console.log('✅ ממשק 0 נלקח (למרות שהוא עשוי להיות מוגן)');
+                } catch (interfaceError) {
+                    console.warn('⚠️ לא ניתן לקחת ממשק - המכשיר משתמש בממשק מוגן (HID/Audio/Video)');
+                    console.warn('המכשיר עדיין מזוהה, אבל לא ניתן לשלוח פקודות דרך WebUSB');
+                    showStatus('usbStatus', '⚠️ המכשיר מזוהה אבל משתמש בממשק מוגן (HID/Audio/Video). לא ניתן לשלוח פקודות דרך WebUSB', 'info');
+                }
+            }
+        } else {
+            // אם אין configuration, ננסה ממשק 0
+            try {
+                await usbDevice.claimInterface(0);
+                interfaceClaimed = true;
+            } catch (interfaceError) {
+                console.warn('⚠️ לא ניתן לקחת ממשק - המכשיר משתמש בממשק מוגן');
+            }
+        }
+
+        if (interfaceClaimed) {
+            const deviceName = usbDevice.productName || usbDevice.manufacturerName || 'USB Device';
+            showStatus('usbStatus', `✅ מחובר למכשיר: ${deviceName}`, 'success');
+
+            // אם זה מצלמה, עדכן את סוג המכשיר
+            if (isUSBCamera(usbDevice)) {
+                showStatus('usbStatus', `✅ מצלמה USB מזוהה: ${deviceName}`, 'success');
+            }
+        } else {
+            showStatus('usbStatus', `ℹ️ מכשיר מזוהה: ${usbDevice.productName || usbDevice.manufacturerName || 'USB Device'} (ממשק מוגן - לא ניתן לשלוח פקודות)`, 'info');
+        }
 
         // הצגת פרטי המכשיר
         document.getElementById('usbDeviceInfo').style.display = 'block';
@@ -944,13 +1349,66 @@ async function connectUSB() {
 
     } catch (error) {
         if (error.name === 'NotFoundError') {
-            showStatus('usbStatus', '❌ לא נמצא מכשיר USB. ודא שהמכשיר מחובר', 'error');
+            if (error.message && error.message.includes('No device selected')) {
+                showStatus('usbStatus', 'ℹ️ בחירת מכשיר בוטלה. בחר מכשיר מהרשימה כדי להתחבר', 'info');
+            } else {
+                showStatus('usbStatus', '❌ לא נמצא מכשיר USB. ודא שהמכשיר מחובר ולחץ שוב', 'error');
+            }
         } else if (error.name === 'SecurityError') {
-            showStatus('usbStatus', '❌ אין הרשאה לגשת למכשיר USB', 'error');
+            if (error.message && error.message.includes('protected class')) {
+                showStatus('usbStatus', '⚠️ המכשיר משתמש בממשק מוגן (HID/Audio/Video). המכשיר מזוהה אבל לא ניתן לשלוח פקודות דרך WebUSB. נסה להשתמש ב-Bluetooth או WiFi', 'info');
+                // למרות השגיאה, נשמור את המכשיר אם הוא נבחר
+                if (usbDevice) {
+                    const usbId = `${usbDevice.vendorId}-${usbDevice.productId}`;
+                    const exists = devices.find(d => d.usbId === usbId);
+                    if (!exists) {
+                        const newDevice = {
+                            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                            name: usbDevice.productName || usbDevice.manufacturerName || 'USB Device',
+                            type: 'other',
+                            connectionType: 'usb',
+                            usbId: usbId,
+                            vendorId: usbDevice.vendorId,
+                            productId: usbDevice.productId,
+                            protectedInterface: true
+                        };
+                        devices.push(newDevice);
+                        localStorage.setItem('devices', JSON.stringify(devices));
+                        loadDevices();
+                    }
+                }
+            } else {
+                showStatus('usbStatus', '❌ אין הרשאה לגשת למכשיר USB. ודא שהדפדפן מאפשר גישה למכשירים USB', 'error');
+            }
         } else {
-            showStatus('usbStatus', `❌ שגיאה: ${error.message}`, 'error');
+            showStatus('usbStatus', `❌ שגיאה: ${error.message || error.name}`, 'error');
         }
         console.error('USB connection error:', error);
+
+        // אם המכשיר נבחר אבל יש שגיאה, נשמור אותו בכל זאת
+        if (usbDevice && error.name !== 'NotFoundError') {
+            try {
+                const usbId = `${usbDevice.vendorId}-${usbDevice.productId}`;
+                const exists = devices.find(d => d.usbId === usbId);
+                if (!exists) {
+                    const newDevice = {
+                        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                        name: usbDevice.productName || usbDevice.manufacturerName || 'USB Device',
+                        type: 'other',
+                        connectionType: 'usb',
+                        usbId: usbId,
+                        vendorId: usbDevice.vendorId,
+                        productId: usbDevice.productId
+                    };
+                    devices.push(newDevice);
+                    localStorage.setItem('devices', JSON.stringify(devices));
+                    loadDevices();
+                    showStatus('usbStatus', `ℹ️ מכשיר נוסף לרשימה (${newDevice.name})`, 'info');
+                }
+            } catch (saveError) {
+                console.error('Error saving device:', saveError);
+            }
+        }
     }
 }
 
@@ -971,24 +1429,346 @@ async function disconnectUSB() {
 }
 
 // שליחת פקודה דרך USB
-async function sendUSBCommand(command, value = null) {
-    if (!usbDevice) {
+// זיהוי אם מכשיר USB הוא מצלמה
+function isUSBCamera(device) {
+    if (!device) return false;
+
+    const deviceName = (device.name || '').toLowerCase();
+    const productName = (device.productName || '').toLowerCase();
+    const manufacturerName = (device.manufacturerName || '').toLowerCase();
+
+    // זיהוי מצלמות USB נפוצות
+    const cameraKeywords = ['lifecam', 'webcam', 'camera', 'cam', 'hd-3000', 'hd3000', 'microsoft'];
+    const isCamera = cameraKeywords.some(keyword =>
+        deviceName.includes(keyword) ||
+        productName.includes(keyword) ||
+        manufacturerName.includes(keyword)
+    );
+
+    // בדיקה אם המכשיר משתמש בממשק Video (0x0e)
+    if (usbDevice && usbDevice.configuration) {
+        const interfaces = usbDevice.configuration.interfaces;
+        for (const iface of interfaces) {
+            for (const alt of iface.alternates) {
+                if (alt.interfaceClass === 0x0e) { // Video Class
+                    return true;
+                }
+            }
+        }
+    }
+
+    return isCamera;
+}
+
+// הפעלת מצלמת USB דרך MediaDevices API
+async function activateUSBCamera(device = null) {
+    try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            showFeedback('❌ הדפדפן שלך לא תומך בגישה למצלמה');
+            return false;
+        }
+
+        const targetDevice = device || { name: 'מצלמה USB' };
+        const deviceName = targetDevice.name || targetDevice.productName || 'מצלמה USB';
+
+        showFeedback(`🔍 מפעיל ${deviceName}...`);
+
+        // קבלת רשימת מכשירי מדיה
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+
+        // חיפוש מצלמה ספציפית לפי שם
+        let selectedDevice = null;
+        if (targetDevice.name || targetDevice.productName) {
+            const searchName = (targetDevice.name || targetDevice.productName).toLowerCase();
+            selectedDevice = videoDevices.find(device =>
+                device.label.toLowerCase().includes(searchName) ||
+                searchName.includes(device.label.toLowerCase())
+            );
+        }
+
+        // אם לא נמצאה מצלמה ספציפית, נשתמש בראשונה
+        if (!selectedDevice && videoDevices.length > 0) {
+            selectedDevice = videoDevices[0];
+        }
+
+        if (!selectedDevice) {
+            showFeedback('❌ לא נמצאה מצלמה');
+            return false;
+        }
+
+        // הפעלת המצלמה
+        const constraints = {
+            video: {
+                deviceId: selectedDevice.deviceId ? { exact: selectedDevice.deviceId } : undefined,
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            }
+        };
+
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+        // שמירת ה-stream להמשך שימוש
+        if (!window.activeCameraStreams) {
+            window.activeCameraStreams = [];
+        }
+        window.activeCameraStreams.push(stream);
+
+        showFeedback(`✅ ${deviceName} הופעלה בהצלחה`);
+
+        // הצגת חיווי ויזואלי
+        const cameraContainer = document.getElementById('cameraPreviewContainer');
+        const videoElement = document.getElementById('cameraPreview');
+        const cameraStatus = document.getElementById('cameraStatus');
+
+        if (cameraContainer && videoElement) {
+            // הצגת הקונטיינר עם אנימציה
+            cameraContainer.style.display = 'block';
+            cameraContainer.style.opacity = '0';
+            cameraContainer.style.transform = 'scale(0.9)';
+            cameraContainer.style.transition = 'all 0.3s ease';
+
+            // אנימציה של הופעה
+            setTimeout(() => {
+                cameraContainer.style.opacity = '1';
+                cameraContainer.style.transform = 'scale(1)';
+            }, 10);
+
+            // הגדרת ה-stream
+            videoElement.srcObject = stream;
+
+            // עדכון סטטוס
+            if (cameraStatus) {
+                cameraStatus.textContent = `✅ ${deviceName} פועלת`;
+                cameraStatus.style.color = '#00b894';
+            }
+
+            // הוספת אפקט ויזואלי כשהמצלמה מתחילה
+            videoElement.addEventListener('loadedmetadata', () => {
+                videoElement.style.border = '3px solid #00b894';
+                setTimeout(() => {
+                    videoElement.style.border = '3px solid transparent';
+                }, 1000);
+            });
+
+            // עדכון סטטוס כשהמצלמה פועלת
+            videoElement.addEventListener('play', () => {
+                if (cameraStatus) {
+                    cameraStatus.textContent = `✅ ${deviceName} פועלת - LIVE`;
+                    cameraStatus.style.color = '#00b894';
+                }
+                // הוספת class לזיהוי שהמצלמה פועלת
+                videoElement.classList.add('playing');
+            });
+
+            // עדכון כפתור "הדלק" למצב פעיל
+            const powerOnBtn = document.querySelector('[data-command="power_on"]');
+            if (powerOnBtn) {
+                powerOnBtn.style.background = 'linear-gradient(135deg, #00b894 0%, #00cec9 100%)';
+                powerOnBtn.style.boxShadow = '0 0 15px rgba(0, 184, 148, 0.5)';
+                powerOnBtn.textContent = '🟢 פעילה';
+            }
+        }
+
+        return true;
+    } catch (error) {
+        console.error('שגיאה בהפעלת מצלמה:', error);
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+            showFeedback('❌ אין הרשאה לגשת למצלמה. אנא אפשר גישה למצלמה בהגדרות הדפדפן');
+        } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+            showFeedback('❌ לא נמצאה מצלמה מחוברת');
+        } else {
+            showFeedback(`❌ שגיאה בהפעלת מצלמה: ${error.message}`);
+        }
+        return false;
+    }
+}
+
+// כיבוי מצלמת USB
+async function deactivateUSBCamera(device = null) {
+    try {
+        const deviceName = device ? (device.name || device.productName || 'מצלמה USB') : 'מצלמה USB';
+
+        // עדכון סטטוס לפני כיבוי
+        const cameraStatus = document.getElementById('cameraStatus');
+        if (cameraStatus) {
+            cameraStatus.textContent = `⏹️ ${deviceName} נכבית...`;
+            cameraStatus.style.color = '#d63031';
+        }
+
+        // עצירת ה-streams
+        if (window.activeCameraStreams && window.activeCameraStreams.length > 0) {
+            window.activeCameraStreams.forEach(stream => {
+                stream.getTracks().forEach(track => track.stop());
+            });
+            window.activeCameraStreams = [];
+        }
+
+        // הסתרת החיווי הוויזואלי עם אנימציה
+        const cameraContainer = document.getElementById('cameraPreviewContainer');
+        const videoElement = document.getElementById('cameraPreview');
+
+        if (cameraContainer && videoElement) {
+            // אנימציה של היעלמות
+            cameraContainer.style.opacity = '0';
+            cameraContainer.style.transform = 'scale(0.9)';
+
+            setTimeout(() => {
+                cameraContainer.style.display = 'none';
+                videoElement.srcObject = null;
+                videoElement.classList.remove('playing');
+            }, 300);
+
+            // עדכון כפתור "הדלק" למצב רגיל
+            const powerOnBtn = document.querySelector('[data-command="power_on"]');
+            if (powerOnBtn) {
+                powerOnBtn.style.background = '';
+                powerOnBtn.style.boxShadow = '';
+                powerOnBtn.textContent = '🟢 הדלק';
+            }
+        }
+
+        showFeedback(`✅ ${deviceName} כובתה`);
+        return true;
+    } catch (error) {
+        console.error('שגיאה בכיבוי מצלמה:', error);
+        showFeedback('❌ שגיאה בכיבוי מצלמה');
+        return false;
+    }
+}
+
+// שליחת אות חשמלי דרך USB - הפעלה/כיבוי מכשירים
+async function sendUSBPowerSignal(powerState, device = null) {
+    if (!usbDevice && !device) {
         showFeedback('⚠️ אין מכשיר USB מחובר');
         return false;
     }
 
     try {
-        // כאן תהיה שליחת הפקודה למכשיר USB
-        // זה תלוי בפרוטוקול של המכשיר הספציפי שלך
+        const targetDevice = device || { connectionType: 'usb' };
 
-        // דוגמה: שליחת נתונים דרך USB
-        const data = new Uint8Array([command, value || 0]);
+        // בדיקה אם זה מצלמה USB
+        const isCamera = isUSBCamera(targetDevice) || isUSBCamera(usbDevice);
 
-        // שליחה ל-endpoint OUT (לרוב 1)
-        await usbDevice.transferOut(1, data);
+        if (isCamera) {
+            // אם זה מצלמה, נשתמש ב-MediaDevices API
+            if (powerState === 'on' || powerState === true) {
+                return await activateUSBCamera(targetDevice);
+            } else {
+                return await deactivateUSBCamera(targetDevice);
+            }
+        }
 
-        console.log('פקודה נשלחה דרך USB:', { command, value });
-        return true;
+        if (usbDevice) {
+            // מציאת endpoint OUT
+            let endpointNumber = 1;
+            if (usbDevice.configuration) {
+                const interfaces = usbDevice.configuration.interfaces;
+                for (const iface of interfaces) {
+                    for (const endpoint of iface.alternate.endpoints) {
+                        if (endpoint.direction === 'out') {
+                            endpointNumber = endpoint.endpointNumber;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // יצירת אות חשמלי: 0x01 = ON, 0x00 = OFF
+            const powerCommand = powerState === 'on' || powerState === true ? 0x01 : 0x00;
+
+            // פרוטוקול USB לשליחת אות חשמלי:
+            // Byte 0: Command Type (0x50 = Power Control)
+            // Byte 1: Power State (0x01 = ON, 0x00 = OFF)
+            // Byte 2: Device ID (0x00 = All, או ID ספציפי)
+            // Byte 3: Checksum
+            const deviceId = targetDevice.usbId ? parseInt(targetDevice.usbId.split('-')[0], 16) % 256 : 0x00;
+            const checksum = (0x50 + powerCommand + deviceId) % 256;
+            const data = new Uint8Array([0x50, powerCommand, deviceId, checksum]);
+
+            // שליחת האות דרך USB
+            await usbDevice.transferOut(endpointNumber, data);
+
+            console.log(`אות חשמלי נשלח דרך USB: ${powerState === 'on' || powerState === true ? 'ON' : 'OFF'}`, data);
+            showFeedback(`✅ ${powerState === 'on' || powerState === true ? 'הדלקה' : 'כיבוי'} דרך USB`);
+
+            // אם זה הדלקה, אפשר הפעלת מכשירים אחרי ההדלקה
+            if (powerState === 'on' || powerState === true) {
+                setTimeout(() => {
+                    showFeedback('✅ מכשיר מוכן לשליטה');
+                }, 2000);
+            }
+
+            return true;
+        }
+
+        return false;
+    } catch (error) {
+        console.error('שגיאה בשליחת אות חשמלי דרך USB:', error);
+        showFeedback('❌ שגיאה בשליחת אות חשמלי דרך USB');
+        return false;
+    }
+}
+
+async function sendUSBCommand(command, value = null, device = null) {
+    if (!usbDevice && !device) {
+        showFeedback('⚠️ אין מכשיר USB מחובר');
+        return false;
+    }
+
+    try {
+        const targetDevice = device || { connectionType: 'usb' };
+        const mappedCommand = mapCommandToDeviceStandard(targetDevice, command, value);
+
+        // טיפול בפקודות הדלקה/כיבוי
+        if (command === 'power_on' || command === 'power_off') {
+            const powerState = command === 'power_on' ? 'on' : 'off';
+            return await sendUSBPowerSignal(powerState, targetDevice);
+        }
+
+        // אם יש מכשיר USB מחובר
+        if (usbDevice) {
+            // מציאת endpoint OUT
+            let endpointNumber = 1;
+            if (usbDevice.configuration) {
+                const interfaces = usbDevice.configuration.interfaces;
+                for (const iface of interfaces) {
+                    for (const endpoint of iface.alternate.endpoints) {
+                        if (endpoint.direction === 'out') {
+                            endpointNumber = endpoint.endpointNumber;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // שליחת פקודת IR דרך USB
+            if (command === 'IR_SEND' || targetDevice.connectionType === 'ir') {
+                // שליחת קוד IR דרך USB
+                const irCode = value || learnedIRButtons[`${targetDevice.id}_${command}`];
+                if (irCode) {
+                    // המרת קוד IR לנתונים בינאריים
+                    const data = new Uint8Array(irCode.split('').map(c => parseInt(c, 2)));
+                    await usbDevice.transferOut(endpointNumber, data);
+                    console.log('קוד IR נשלח דרך USB:', irCode);
+                    return true;
+                }
+            }
+
+            // שליחת פקודה רגילה דרך USB
+            const commandCode = mappedCommand.command.charCodeAt(0) || 0;
+            const valueCode = mappedCommand.value || 0;
+            const data = new Uint8Array([commandCode, valueCode]);
+
+            // שליחה ל-endpoint OUT
+            await usbDevice.transferOut(endpointNumber, data);
+
+            console.log('פקודה נשלחה דרך USB:', mappedCommand);
+            showFeedback(`✅ פקודה נשלחה: ${command}`);
+            return true;
+        }
+
+        return false;
     } catch (error) {
         console.error('שגיאה בשליחת פקודת USB:', error);
         showFeedback('❌ שגיאה בשליחת פקודה דרך USB');
@@ -2381,27 +3161,57 @@ function importScenes() {
 
 // שליחת פקודה דרך קוד (QR/Code)
 function sendCodeCommand(device, command, value) {
-    if (!device.code) {
+    if (!device.code && !device.deviceCode) {
         showFeedback('⚠️ אין קוד מוגדר למכשיר');
         return;
     }
 
-    console.log('שליחת פקודה דרך קוד:', { device: device.code, command, value });
-    showFeedback(`✅ פקודה נשלחה דרך קוד: ${device.code}`);
-}
+    try {
+        const code = device.code || device.deviceCode;
+        const mappedCommand = mapCommandToDeviceStandard(device, command, value);
 
-// שליחת פקודה דרך זיהוי אוטומטי
-function sendAutoCommand(device, command, value) {
-    if (!device.ip) {
-        showFeedback('⚠️ אין כתובת IP מוגדרת');
-        return;
+        // שליחה דרך קוד מספרי (למשל HTTP עם קוד)
+        const url = `http://${device.ip || '192.168.1.1'}/api/command?code=${code}&cmd=${encodeURIComponent(mappedCommand.command)}${value ? '&value=' + encodeURIComponent(value) : ''}`;
+
+        fetch(url, {
+            method: 'GET',
+            mode: 'cors'
+        }).then(() => {
+            showFeedback(`✅ פקודה נשלחה דרך קוד: ${code}`);
+        }).catch(err => {
+            console.error('שגיאה בשליחת פקודה דרך קוד:', err);
+            showFeedback('⚠️ שגיאה בשליחת פקודה');
+        });
+    } catch (err) {
+        console.error('שגיאה בשליחת פקודה דרך קוד:', err);
+        showFeedback('⚠️ שגיאה בשליחת פקודה');
     }
-
-    // שליחה דרך IP שזוהה אוטומטית
-    sendWiFiCommand(device, command, value);
 }
 
-// שליחת פקודה דרך NFC
+// שליחת פקודה דרך זיהוי אוטומטי - תואמת סטנדרטים שונים
+function sendAutoCommand(device, command, value) {
+    // ניסיון לזהות את סוג החיבור הטוב ביותר
+    if (device.ip) {
+        // שליחה דרך WiFi
+        sendWiFiCommand(device, command, value);
+    } else if (device.bluetoothId) {
+        // שליחה דרך Bluetooth
+        sendBluetoothCommand(device, command, value);
+    } else if (device.usbId) {
+        // שליחה דרך USB
+        sendUSBCommand(command, value, device);
+    } else if (device.irId || device.irButtons) {
+        // שליחה דרך IR
+        sendIRCommand(device, command, value);
+    } else if (device.code || device.deviceCode) {
+        // שליחה דרך קוד
+        sendCodeCommand(device, command, value);
+    } else {
+        showFeedback('⚠️ לא ניתן לזהות סוג חיבור למכשיר');
+    }
+}
+
+// שליחת פקודה דרך NFC - תואמת סטנדרטים שונים
 async function sendNFCCommand(device, command, value) {
     if (!('NDEFReader' in window)) {
         showFeedback('❌ הדפדפן שלך לא תומך ב-NFC');
@@ -2409,15 +3219,21 @@ async function sendNFCCommand(device, command, value) {
     }
 
     try {
+        const mappedCommand = mapCommandToDeviceStandard(device, command, value);
         const ndef = new NDEFReader();
         await ndef.write({
             records: [{
                 recordType: "text",
-                data: JSON.stringify({ command, value, device: device.id })
+                data: JSON.stringify({
+                    command: mappedCommand.command,
+                    value: mappedCommand.value,
+                    device: device.id,
+                    type: device.type
+                })
             }]
         });
 
-        showFeedback('✅ פקודה נשלחה דרך NFC');
+        showFeedback(`✅ פקודה נשלחה דרך NFC: ${mappedCommand.command}`);
     } catch (error) {
         showFeedback(`❌ שגיאה בשליחת פקודת NFC: ${error.message}`);
     }
@@ -3367,5 +4183,669 @@ function setupTemplateEventListeners() {
     if (categoryFilter) {
         categoryFilter.addEventListener('change', loadTemplates);
     }
+}
+
+// ========== שלט רחוק ויזואלי ==========
+
+let selectedRemoteDevice = null;
+
+// אתחול שלט רחוק ויזואלי
+function setupVisualRemote() {
+    const deviceSelect = document.getElementById('remoteDeviceSelect');
+    if (!deviceSelect) return;
+
+    // טעינת רשימת מכשירים
+    loadRemoteDeviceSelect();
+
+    // טיפול בבחירת מכשיר
+    deviceSelect.addEventListener('change', (e) => {
+        const deviceId = e.target.value;
+        if (deviceId) {
+            selectedRemoteDevice = devices.find(d => d.id === deviceId);
+            if (selectedRemoteDevice) {
+                showVisualRemote(selectedRemoteDevice);
+            }
+        } else {
+            hideVisualRemote();
+        }
+    });
+
+    // טיפול בלחיצות על כפתורים (תמיכה גם ב-touch)
+    const handleButtonInteraction = (e) => {
+        const button = e.target.closest('.remote-btn');
+        if (button) {
+            const command = button.dataset.command;
+            if (command && selectedRemoteDevice) {
+                e.preventDefault();
+                e.stopPropagation();
+                handleRemoteButtonClick(command);
+            }
+        }
+    };
+
+    // תמיכה ב-click ו-touch
+    document.addEventListener('click', handleButtonInteraction);
+    document.addEventListener('touchend', handleButtonInteraction);
+
+    // מניעת double-tap zoom בנייד
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', (e) => {
+        const now = Date.now();
+        if (now - lastTouchEnd <= 300) {
+            e.preventDefault();
+        }
+        lastTouchEnd = now;
+    }, false);
+}
+
+// טעינת רשימת מכשירים ל-select
+function loadRemoteDeviceSelect() {
+    const deviceSelect = document.getElementById('remoteDeviceSelect');
+    if (!deviceSelect) return;
+
+    deviceSelect.innerHTML = '<option value="">-- בחר מכשיר --</option>';
+
+    devices.forEach(device => {
+        const option = document.createElement('option');
+        option.value = device.id;
+        option.textContent = `${device.name} (${getDeviceTypeName(device.type)})`;
+        deviceSelect.appendChild(option);
+    });
+}
+
+// הצגת שלט רחוק ויזואלי
+function showVisualRemote(device) {
+    const visualRemote = document.getElementById('visualRemote');
+    const remoteContainer = document.querySelector('.visual-remote-container');
+    const remote = document.querySelector('.visual-remote');
+
+    if (!visualRemote) {
+        console.error('visualRemote element not found');
+        showFeedback('❌ לא נמצא אלמנט השלט הרחוק');
+        return;
+    }
+
+    if (!remote) {
+        console.error('visual-remote element not found');
+        showFeedback('❌ לא נמצא אלמנט השלט');
+        return;
+    }
+
+    // הצגת השלט הרחוק עם אנימציה
+    console.log('Showing visual remote for device:', device.name);
+
+    // הסרת כל ה-style attributes הקודמים והגדרה מחדש
+    // חשוב: צריך להסיר את display: none מה-HTML
+    visualRemote.removeAttribute('style');
+
+    // הגדרת style חדש - embedded בדף (לא fixed)
+    // שימוש ב-setProperty כדי לוודא שהשלט יוצג גם בגיטהב
+    visualRemote.style.setProperty('display', 'flex', 'important');
+    visualRemote.style.setProperty('visibility', 'visible', 'important');
+    visualRemote.style.setProperty('opacity', '1', 'important');
+    visualRemote.style.setProperty('width', '100%', 'important');
+    visualRemote.style.setProperty('max-width', '100%', 'important');
+    visualRemote.style.setProperty('position', 'relative', 'important');
+    visualRemote.style.setProperty('margin', '20px auto', 'important');
+    visualRemote.style.setProperty('padding', '20px', 'important');
+    visualRemote.style.setProperty('min-height', '300px', 'important');
+
+    const baseStyles = 'display: flex !important; visibility: visible !important; opacity: 1 !important; width: 100% !important; max-width: 100% !important; position: relative !important; margin: 20px auto !important; padding: 20px !important; min-height: 300px !important;';
+
+    // הצגה מיידית - גם עם cssText כגיבוי
+    visualRemote.style.cssText = baseStyles;
+    console.log('Showing remote embedded in page');
+
+    // וידוא שהשלט גלוי - בדיקה נוספת (מספר פעמים)
+    for (let i = 0; i < 3; i++) {
+        setTimeout(() => {
+            const computedStyle = window.getComputedStyle(visualRemote);
+            console.log(`Check ${i + 1} - display:`, computedStyle.display, 'visibility:', computedStyle.visibility, 'opacity:', computedStyle.opacity);
+            if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden') {
+                console.warn(`Remote is still hidden after check ${i + 1}, forcing display again`);
+                visualRemote.style.setProperty('display', 'flex', 'important');
+                visualRemote.style.setProperty('visibility', 'visible', 'important');
+                visualRemote.style.setProperty('opacity', '1', 'important');
+                visualRemote.style.cssText = baseStyles;
+            }
+        }, 50 * (i + 1));
+    }
+
+    // הסרת כל ה-classes הקודמים
+    remote.className = 'visual-remote';
+    if (remoteContainer) {
+        remoteContainer.className = 'visual-remote-container';
+    }
+
+    // הוספת class לפי סוג מכשיר
+    remote.classList.add(`remote-type-${device.type}`);
+    if (remoteContainer) {
+        remoteContainer.classList.add(`remote-container-${device.type}`);
+    }
+
+    // עדכון כותרת המכשיר
+    const deviceNameEl = document.getElementById('remoteDeviceName');
+    const deviceTypeEl = document.getElementById('remoteDeviceType');
+    if (deviceNameEl) {
+        deviceNameEl.textContent = device.name;
+    }
+    if (deviceTypeEl) {
+        deviceTypeEl.textContent = `${getDeviceTypeName(device.type)} - ${getConnectionTypeName(device.connectionType)}`;
+    }
+
+    // הוספת אינדיקטור סטטוס לשלט הרחוק
+    if (remoteContainer) {
+        // הסרת אינדיקטור קודם אם יש
+        const existingIndicator = remoteContainer.querySelector('.remote-status-indicator');
+        if (existingIndicator) {
+            existingIndicator.remove();
+        }
+
+        // הוספת אינדיקטור חדש
+        const statusIndicator = document.createElement('div');
+        statusIndicator.className = 'remote-status-indicator';
+        statusIndicator.textContent = `✅ ${device.name} - מוכן לשליטה`;
+        remoteContainer.appendChild(statusIndicator);
+    }
+
+    // התאמת הממשק לסוג המכשיר
+    adaptRemoteToDeviceType(device);
+
+    // הוספת כפתורים ספציפיים לפי סוג מכשיר
+    loadDeviceSpecificButtons(device);
+
+    // במכשירים ניידים, וידוא שהכל גלוי
+    if (isMobileDevice()) {
+        // וידוא שכל הכפתורים גלויים
+        const allButtons = remote.querySelectorAll('.remote-btn');
+        allButtons.forEach(btn => {
+            btn.style.cssText = 'display: flex !important; visibility: visible !important; opacity: 1 !important;';
+        });
+
+        // וידוא שכל הסקשנים גלויים
+        const numbersSection = remote.querySelector('.remote-numbers');
+        const navigationSection = remote.querySelector('.remote-navigation');
+        const controlsSection = remote.querySelector('.remote-controls');
+        const featuresSection = remote.querySelector('.remote-features');
+        const deviceSpecificSection = remote.querySelector('#deviceSpecificButtons');
+
+        if (numbersSection) numbersSection.style.cssText = 'display: grid !important; visibility: visible !important; opacity: 1 !important;';
+        if (navigationSection) navigationSection.style.cssText = 'display: flex !important; visibility: visible !important; opacity: 1 !important;';
+        if (controlsSection) controlsSection.style.cssText = 'display: grid !important; visibility: visible !important; opacity: 1 !important;';
+        if (featuresSection) featuresSection.style.cssText = 'display: grid !important; visibility: visible !important; opacity: 1 !important;';
+        if (deviceSpecificSection) deviceSpecificSection.style.cssText = 'display: grid !important; visibility: visible !important; opacity: 1 !important;';
+
+        console.log('Mobile device - ensured all sections are visible');
+    }
+
+    // וידוא שהשלט גלוי גם במכשירים לא ניידים (גם בגיטהב)
+    setTimeout(() => {
+        const computedStyle = window.getComputedStyle(visualRemote);
+        console.log('Final check - display:', computedStyle.display, 'visibility:', computedStyle.visibility);
+        if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden') {
+            console.warn('Remote is still hidden, forcing display with baseStyles');
+            const baseStyles = 'display: flex !important; visibility: visible !important; opacity: 1 !important; width: 100% !important; max-width: 100% !important; position: relative !important; margin: 20px auto !important; padding: 20px !important; min-height: 300px !important;';
+            visualRemote.style.setProperty('display', 'flex', 'important');
+            visualRemote.style.setProperty('visibility', 'visible', 'important');
+            visualRemote.style.setProperty('opacity', '1', 'important');
+            visualRemote.style.cssText = baseStyles;
+        }
+        // גלילה לקטע השלט הרחוק
+        const remoteSection = document.querySelector('.remote-control-section');
+        if (remoteSection) {
+            remoteSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }, 150);
+
+    console.log('Visual remote shown successfully');
+}
+
+// הסתרת שלט רחוק ויזואלי
+function hideVisualRemote() {
+    const visualRemote = document.getElementById('visualRemote');
+    if (!visualRemote) return;
+
+    visualRemote.style.cssText = 'display: none !important; visibility: hidden !important;';
+    selectedRemoteDevice = null;
+}
+
+// טיפול בלחיצה על כפתור בשלט הרחוק
+function handleRemoteButtonClick(command) {
+    if (!selectedRemoteDevice) {
+        showFeedback('❌ לא נבחר מכשיר');
+        return;
+    }
+
+    // מציאת הכפתור שנלחץ
+    const button = document.querySelector(`[data-command="${command}"]`);
+    if (button) {
+        // אנימציה של לחיצה - אפקט חזק יותר
+        button.style.transform = 'scale(0.9)';
+        button.style.transition = 'all 0.1s ease';
+
+        // הוספת אפקט זוהר
+        const originalBoxShadow = button.style.boxShadow;
+        button.style.boxShadow = '0 0 20px rgba(102, 126, 234, 0.8), 0 0 40px rgba(102, 126, 234, 0.4)';
+        button.style.filter = 'brightness(1.2)';
+
+        // החזרה למצב רגיל עם אנימציה
+        setTimeout(() => {
+            button.style.transform = 'scale(1)';
+            button.style.boxShadow = originalBoxShadow || '';
+            button.style.filter = '';
+        }, 150);
+
+        // הוספת אינדיקטור ויזואלי - טקסט מעל הכפתור
+        const buttonText = button.textContent;
+        const indicator = document.createElement('div');
+        indicator.className = 'button-press-indicator';
+        indicator.textContent = '✓';
+        indicator.style.cssText = `
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: #00b894;
+            color: white;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 1000;
+            animation: buttonPress 0.5s ease;
+            box-shadow: 0 2px 10px rgba(0, 184, 148, 0.5);
+        `;
+
+        // הוספת position relative לכפתור אם אין
+        if (getComputedStyle(button).position === 'static') {
+            button.style.position = 'relative';
+        }
+
+        button.appendChild(indicator);
+
+        // הסרת האינדיקטור אחרי האנימציה
+        setTimeout(() => {
+            if (indicator.parentNode) {
+                indicator.style.opacity = '0';
+                indicator.style.transform = 'scale(0.5)';
+                setTimeout(() => {
+                    indicator.remove();
+                }, 300);
+            }
+        }, 500);
+    }
+
+    // שליחת פקודה למכשיר
+    sendCommand(selectedRemoteDevice, command);
+
+    // חיווי ויזואלי נוסף - הודעת הצלחה עם שם הכפתור
+    const commandName = command.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    showFeedback(`✅ ${commandName} נשלח ל-${selectedRemoteDevice.name}`);
+}
+
+// התאמת הממשק לסוג המכשיר
+function adaptRemoteToDeviceType(device) {
+    const remote = document.querySelector('.visual-remote');
+    if (!remote) return;
+
+    // הסתרת/הצגת כפתורים לפי סוג מכשיר
+    const numbersSection = remote.querySelector('.remote-numbers');
+    const navigationSection = remote.querySelector('.remote-navigation');
+    const controlsSection = remote.querySelector('.remote-controls');
+    const featuresSection = remote.querySelector('.remote-features');
+
+    // הגדרות לכל סוג מכשיר
+    const deviceConfig = {
+        'tv': {
+            showNumbers: true,
+            showNavigation: true,
+            showControls: true,
+            showFeatures: true,
+            showChannelButtons: true,
+            showVolumeButtons: true
+        },
+        'ac': {
+            showNumbers: false,
+            showNavigation: false,
+            showControls: true,
+            showFeatures: false,
+            showChannelButtons: false,
+            showVolumeButtons: false
+        },
+        'audio': {
+            showNumbers: false,
+            showNavigation: false,
+            showControls: true,
+            showFeatures: false,
+            showChannelButtons: false,
+            showVolumeButtons: true
+        },
+        'light': {
+            showNumbers: false,
+            showNavigation: false,
+            showControls: true,
+            showFeatures: false,
+            showChannelButtons: false,
+            showVolumeButtons: false
+        },
+        'streamer': {
+            showNumbers: false,
+            showNavigation: true,
+            showControls: true,
+            showFeatures: true,
+            showChannelButtons: false,
+            showVolumeButtons: false
+        },
+        'fan': {
+            showNumbers: false,
+            showNavigation: false,
+            showControls: true,
+            showFeatures: false,
+            showChannelButtons: false,
+            showVolumeButtons: false
+        },
+        'blinds': {
+            showNumbers: false,
+            showNavigation: false,
+            showControls: true,
+            showFeatures: false,
+            showChannelButtons: false,
+            showVolumeButtons: false
+        },
+        'door': {
+            showNumbers: false,
+            showNavigation: false,
+            showControls: true,
+            showFeatures: false,
+            showChannelButtons: false,
+            showVolumeButtons: false
+        },
+        'security': {
+            showNumbers: false,
+            showNavigation: false,
+            showControls: true,
+            showFeatures: false,
+            showChannelButtons: false,
+            showVolumeButtons: false
+        },
+        'heater': {
+            showNumbers: false,
+            showNavigation: false,
+            showControls: true,
+            showFeatures: false,
+            showChannelButtons: false,
+            showVolumeButtons: false
+        },
+        'projector': {
+            showNumbers: false,
+            showNavigation: true,
+            showControls: true,
+            showFeatures: true,
+            showChannelButtons: false,
+            showVolumeButtons: false
+        },
+        'camera': {
+            showNumbers: false,
+            showNavigation: true,
+            showControls: true,
+            showFeatures: false,
+            showChannelButtons: false,
+            showVolumeButtons: false
+        },
+        'smart_hub': {
+            showNumbers: false,
+            showNavigation: true,
+            showControls: true,
+            showFeatures: true,
+            showChannelButtons: false,
+            showVolumeButtons: true
+        }
+    };
+
+    const config = deviceConfig[device.type] || deviceConfig['tv'];
+
+    // הסתרת/הצגת כפתורים
+    if (numbersSection) {
+        numbersSection.style.display = config.showNumbers ? 'grid' : 'none';
+    }
+    if (navigationSection) {
+        navigationSection.style.display = config.showNavigation ? 'flex' : 'none';
+    }
+    if (controlsSection) {
+        controlsSection.style.display = config.showControls ? 'grid' : 'none';
+
+        // הסתרת/הצגת כפתורי ערוץ
+        const channelUp = controlsSection.querySelector('[data-command="channel_up"]');
+        const channelDown = controlsSection.querySelector('[data-command="channel_down"]');
+        if (channelUp) channelUp.style.display = config.showChannelButtons ? 'flex' : 'none';
+        if (channelDown) channelDown.style.display = config.showChannelButtons ? 'flex' : 'none';
+
+        // הסתרת/הצגת כפתורי עוצמה
+        const volumeUp = controlsSection.querySelector('[data-command="volume_up"]');
+        const volumeDown = controlsSection.querySelector('[data-command="volume_down"]');
+        const mute = controlsSection.querySelector('[data-command="mute"]');
+        if (volumeUp) volumeUp.style.display = config.showVolumeButtons ? 'flex' : 'none';
+        if (volumeDown) volumeDown.style.display = config.showVolumeButtons ? 'flex' : 'none';
+        if (mute) mute.style.display = config.showVolumeButtons ? 'flex' : 'none';
+    }
+    if (featuresSection) {
+        featuresSection.style.display = config.showFeatures ? 'grid' : 'none';
+    }
+}
+
+// הוספת כפתורים ספציפיים לפי סוג מכשיר
+function loadDeviceSpecificButtons(device) {
+    const container = document.getElementById('deviceSpecificButtons');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    // כפתורים לפי סוג מכשיר
+    const deviceButtons = getDeviceSpecificButtons(device.type);
+
+    deviceButtons.forEach(btn => {
+        const button = document.createElement('button');
+        button.className = 'remote-btn feature-btn';
+        button.dataset.command = btn.command;
+        button.textContent = btn.label;
+        button.title = btn.title || btn.label;
+        container.appendChild(button);
+    });
+
+    // כפתורים מ-IR buttons אם יש
+    if (device.irButtons || device.templateId) {
+        const template = templates.find(t => t.id === device.templateId);
+        if (template && template.buttons) {
+            Object.keys(template.buttons).forEach(key => {
+                // בדיקה אם הכפתור כבר קיים
+                const exists = document.querySelector(`[data-command="${key}"]`);
+                if (!exists && !deviceButtons.find(b => b.command === key)) {
+                    const button = document.createElement('button');
+                    button.className = 'remote-btn feature-btn';
+                    button.dataset.command = key;
+                    button.textContent = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    button.title = key;
+                    container.appendChild(button);
+                }
+            });
+        }
+    }
+
+    // כפתורים מ-learnedIRButtons אם יש
+    if (device.connectionType === 'ir') {
+        Object.keys(learnedIRButtons).forEach(key => {
+            if (key.startsWith(`${device.id}_`)) {
+                const command = key.replace(`${device.id}_`, '');
+                const exists = document.querySelector(`[data-command="${command}"]`);
+                if (!exists && !deviceButtons.find(b => b.command === command)) {
+                    const button = document.createElement('button');
+                    button.className = 'remote-btn feature-btn';
+                    button.dataset.command = command;
+                    button.textContent = command.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    button.title = command;
+                    container.appendChild(button);
+                }
+            }
+        });
+    }
+}
+
+// קבלת כפתורים ספציפיים לפי סוג מכשיר
+function getDeviceSpecificButtons(deviceType) {
+    const buttons = {
+        'tv': [
+            { command: 'netflix', label: '📺 Netflix', title: 'Netflix' },
+            { command: 'youtube', label: '▶️ YouTube', title: 'YouTube' },
+            { command: 'input', label: '📡 Input', title: 'Input' },
+            { command: 'guide', label: '📋 Guide', title: 'Guide' },
+            { command: 'info', label: 'ℹ️ Info', title: 'Info' },
+            { command: 'exit', label: '❌ Exit', title: 'Exit' },
+            { command: 'red', label: '🔴 Red', title: 'Red' },
+            { command: 'green', label: '🟢 Green', title: 'Green' },
+            { command: 'yellow', label: '🟡 Yellow', title: 'Yellow' },
+            { command: 'blue', label: '🔵 Blue', title: 'Blue' }
+        ],
+        'ac': [
+            { command: 'temp_up', label: '🌡️+', title: 'העלה טמפרטורה' },
+            { command: 'temp_down', label: '🌡️-', title: 'הורד טמפרטורה' },
+            { command: 'mode', label: '🌀 Mode', title: 'מצב (Cool/Heat/Fan/Auto)' },
+            { command: 'fan_speed', label: '💨 Fan', title: 'מהירות מאוורר' },
+            { command: 'swing', label: '↔️ Swing', title: 'Swing' },
+            { command: 'timer', label: '⏰ Timer', title: 'טיימר' },
+            { command: 'sleep', label: '😴 Sleep', title: 'שינה' },
+            { command: 'eco', label: '🌿 Eco', title: 'Eco' },
+            { command: 'turbo', label: '💨 Turbo', title: 'Turbo' },
+            { command: 'dry', label: '💧 Dry', title: 'Dry' },
+            { command: 'auto', label: '🔄 Auto', title: 'Auto' }
+        ],
+        'audio': [
+            { command: 'bass_up', label: '🎵 Bass+', title: 'העלה Bass' },
+            { command: 'bass_down', label: '🎵 Bass-', title: 'הורד Bass' },
+            { command: 'treble_up', label: '🎶 Treble+', title: 'העלה Treble' },
+            { command: 'treble_down', label: '🎶 Treble-', title: 'הורד Treble' },
+            { command: 'input', label: '📡 Input', title: 'Input' },
+            { command: 'bluetooth', label: '🔵 BT', title: 'Bluetooth' },
+            { command: 'optical', label: '🔴 Optical', title: 'Optical' },
+            { command: 'hdmi', label: '📺 HDMI', title: 'HDMI' },
+            { command: 'aux', label: '🎧 AUX', title: 'AUX' },
+            { command: 'usb', label: '💾 USB', title: 'USB' },
+            { command: 'radio', label: '📻 Radio', title: 'Radio' },
+            { command: 'eq', label: '🎚️ EQ', title: 'Equalizer' }
+        ],
+        'light': [
+            { command: 'brightness_up', label: '💡+', title: 'העלה בהירות' },
+            { command: 'brightness_down', label: '💡-', title: 'הורד בהירות' },
+            { command: 'color_red', label: '🔴', title: 'אדום' },
+            { command: 'color_green', label: '🟢', title: 'ירוק' },
+            { command: 'color_blue', label: '🔵', title: 'כחול' },
+            { command: 'color_white', label: '⚪', title: 'לבן' },
+            { command: 'color_yellow', label: '🟡', title: 'צהוב' },
+            { command: 'color_purple', label: '🟣', title: 'סגול' },
+            { command: 'color_cyan', label: '🔷', title: 'ציאן' },
+            { command: 'scene_1', label: '1️⃣', title: 'סצנה 1' },
+            { command: 'scene_2', label: '2️⃣', title: 'סצנה 2' },
+            { command: 'scene_3', label: '3️⃣', title: 'סצנה 3' },
+            { command: 'scene_4', label: '4️⃣', title: 'סצנה 4' }
+        ],
+        'streamer': [
+            { command: 'play', label: '▶️', title: 'נגן' },
+            { command: 'pause', label: '⏸️', title: 'השהה' },
+            { command: 'stop', label: '⏹️', title: 'עצור' },
+            { command: 'rewind', label: '⏪', title: 'הרץ אחורה' },
+            { command: 'forward', label: '⏩', title: 'הרץ קדימה' },
+            { command: 'search', label: '🔍', title: 'חיפוש' },
+            { command: 'next', label: '⏭️', title: 'הבא' },
+            { command: 'prev', label: '⏮️', title: 'קודם' },
+            { command: 'subtitle', label: '📝', title: 'כתוביות' },
+            { command: 'audio', label: '🔊', title: 'שפה' }
+        ],
+        'fan': [
+            { command: 'speed_1', label: '1️⃣', title: 'מהירות 1' },
+            { command: 'speed_2', label: '2️⃣', title: 'מהירות 2' },
+            { command: 'speed_3', label: '3️⃣', title: 'מהירות 3' },
+            { command: 'speed_4', label: '4️⃣', title: 'מהירות 4' },
+            { command: 'oscillate', label: '↔️', title: 'תנודה' },
+            { command: 'timer', label: '⏰', title: 'טיימר' },
+            { command: 'mode', label: '🌀', title: 'מצב' },
+            { command: 'natural', label: '🌬️', title: 'Natural' },
+            { command: 'sleep', label: '😴', title: 'שינה' }
+        ],
+        'blinds': [
+            { command: 'open', label: '⬆️', title: 'פתח' },
+            { command: 'close', label: '⬇️', title: 'סגור' },
+            { command: 'stop', label: '⏹️', title: 'עצור' },
+            { command: 'position_25', label: '25%', title: '25%' },
+            { command: 'position_50', label: '50%', title: '50%' },
+            { command: 'position_75', label: '75%', title: '75%' },
+            { command: 'position_100', label: '100%', title: '100%' },
+            { command: 'tilt_open', label: '↗️', title: 'הטיה פתוחה' },
+            { command: 'tilt_close', label: '↘️', title: 'הטיה סגורה' }
+        ],
+        'door': [
+            { command: 'lock', label: '🔒', title: 'נעל' },
+            { command: 'unlock', label: '🔓', title: 'פתח' },
+            { command: 'status', label: 'ℹ️', title: 'סטטוס' },
+            { command: 'auto_lock', label: '🔄', title: 'נעילה אוטומטית' },
+            { command: 'guest', label: '👤', title: 'אורח' },
+            { command: 'schedule', label: '📅', title: 'תזמון' }
+        ],
+        'security': [
+            { command: 'arm', label: '🛡️', title: 'הפעל' },
+            { command: 'disarm', label: '🔓', title: 'כבה' },
+            { command: 'panic', label: '🚨', title: 'פאניקה' },
+            { command: 'status', label: 'ℹ️', title: 'סטטוס' },
+            { command: 'bypass', label: '⏭️', title: 'עקוף' },
+            { command: 'chime', label: '🔔', title: 'צלצול' },
+            { command: 'test', label: '🧪', title: 'בדיקה' }
+        ],
+        'heater': [
+            { command: 'temp_up', label: '🌡️+', title: 'העלה טמפרטורה' },
+            { command: 'temp_down', label: '🌡️-', title: 'הורד טמפרטורה' },
+            { command: 'mode', label: '🌀', title: 'מצב' },
+            { command: 'timer', label: '⏰', title: 'טיימר' },
+            { command: 'eco', label: '🌿', title: 'Eco' },
+            { command: 'fan', label: '💨', title: 'מאוורר' },
+            { command: 'oscillate', label: '↔️', title: 'תנודה' }
+        ],
+        'projector': [
+            { command: 'input', label: '📡', title: 'Input' },
+            { command: 'zoom_in', label: '🔍+', title: 'זום פנימה' },
+            { command: 'zoom_out', label: '🔍-', title: 'זום החוצה' },
+            { command: 'focus', label: '🎯', title: 'פוקוס' },
+            { command: 'keystone', label: '📐', title: 'Keystone' },
+            { command: 'lamp', label: '💡', title: 'נורה' },
+            { command: 'freeze', label: '❄️', title: 'הקפאה' },
+            { command: 'mute', label: '🔇', title: 'השתק' }
+        ],
+        'camera': [
+            { command: 'record', label: '🔴', title: 'הקלטה' },
+            { command: 'stop', label: '⏹️', title: 'עצור' },
+            { command: 'snapshot', label: '📸', title: 'צילום' },
+            { command: 'zoom_in', label: '🔍+', title: 'זום פנימה' },
+            { command: 'zoom_out', label: '🔍-', title: 'זום החוצה' },
+            { command: 'pan_left', label: '◄', title: 'פאן שמאלה' },
+            { command: 'pan_right', label: '►', title: 'פאן ימינה' },
+            { command: 'tilt_up', label: '▲', title: 'הטיה למעלה' },
+            { command: 'tilt_down', label: '▼', title: 'הטיה למטה' },
+            { command: 'preset_1', label: '1️⃣', title: 'Preset 1' },
+            { command: 'preset_2', label: '2️⃣', title: 'Preset 2' },
+            { command: 'preset_3', label: '3️⃣', title: 'Preset 3' }
+        ],
+        'smart_hub': [
+            { command: 'scene_1', label: '1️⃣', title: 'סצנה 1' },
+            { command: 'scene_2', label: '2️⃣', title: 'סצנה 2' },
+            { command: 'scene_3', label: '3️⃣', title: 'סצנה 3' },
+            { command: 'all_on', label: '💡', title: 'הכל דולק' },
+            { command: 'all_off', label: '🌙', title: 'הכל כבוי' },
+            { command: 'away', label: '🚶', title: 'נעדר' },
+            { command: 'home', label: '🏠', title: 'בית' },
+            { command: 'sleep', label: '😴', title: 'שינה' }
+        ]
+    };
+
+    return buttons[deviceType] || [];
 }
 

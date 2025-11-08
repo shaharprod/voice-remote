@@ -2,9 +2,12 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>שליטה קולית - Voice Remote</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=2.1">
 </head>
 <body>
     <div class="container">
@@ -23,6 +26,75 @@
                     </button>
                     <div id="voiceFeedback" class="voice-feedback"></div>
                     <div id="transcript" class="transcript"></div>
+                </div>
+            </section>
+
+            <!-- שלט רחוק ויזואלי -->
+            <section class="remote-control-section">
+                <h2>📱 שלט רחוק ויזואלי</h2>
+                <div style="margin-bottom: 15px;">
+                    <label>בחר מכשיר לשליטה:</label>
+                    <select id="remoteDeviceSelect" style="width: 100%; padding: 10px; border-radius: 8px; border: 2px solid #ddd; margin-top: 10px;">
+                        <option value="">-- בחר מכשיר --</option>
+                    </select>
+                </div>
+                <div id="visualRemote" class="visual-remote-container" style="display: none;">
+                    <div class="visual-remote">
+                        <!-- כותרת מכשיר -->
+                        <div class="remote-header" style="text-align: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid rgba(255,255,255,0.3);">
+                            <h3 id="remoteDeviceName" style="color: white; font-size: 1.5em; margin: 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);"></h3>
+                            <div id="remoteDeviceType" style="color: rgba(255,255,255,0.8); font-size: 0.9em; margin-top: 5px;"></div>
+                        </div>
+
+                        <!-- מספרים -->
+                        <div class="remote-numbers">
+                            <button class="remote-btn number-btn" data-command="1">1</button>
+                            <button class="remote-btn number-btn" data-command="2">2</button>
+                            <button class="remote-btn number-btn" data-command="3">3</button>
+                            <button class="remote-btn number-btn" data-command="4">4</button>
+                            <button class="remote-btn number-btn" data-command="5">5</button>
+                            <button class="remote-btn number-btn" data-command="6">6</button>
+                            <button class="remote-btn number-btn" data-command="7">7</button>
+                            <button class="remote-btn number-btn" data-command="8">8</button>
+                            <button class="remote-btn number-btn" data-command="9">9</button>
+                            <button class="remote-btn number-btn" data-command="0">0</button>
+                        </div>
+
+                        <!-- ניווט -->
+                        <div class="remote-navigation">
+                            <button class="remote-btn nav-btn" data-command="up">⬆️</button>
+                            <div class="nav-middle">
+                                <button class="remote-btn nav-btn" data-command="left">⬅️</button>
+                                <button class="remote-btn nav-btn" data-command="ok">OK</button>
+                                <button class="remote-btn nav-btn" data-command="right">➡️</button>
+                            </div>
+                            <button class="remote-btn nav-btn" data-command="down">⬇️</button>
+                        </div>
+
+                        <!-- בקרות -->
+                        <div class="remote-controls">
+                            <button class="remote-btn power-btn power-on-btn" data-command="power_on">🟢 הדלק</button>
+                            <button class="remote-btn power-btn power-off-btn" data-command="power_off">🔴 כבה</button>
+                            <button class="remote-btn" data-command="volume_up">🔊 +</button>
+                            <button class="remote-btn" data-command="volume_down">🔉 -</button>
+                            <button class="remote-btn" data-command="mute">🔇 השתק</button>
+                            <button class="remote-btn" data-command="channel_up">📺 +</button>
+                            <button class="remote-btn" data-command="channel_down">📺 -</button>
+                        </div>
+
+                        <!-- תכונות נוספות -->
+                        <div class="remote-features">
+                            <button class="remote-btn" data-command="menu">📋 תפריט</button>
+                            <button class="remote-btn" data-command="back">↩️ חזור</button>
+                            <button class="remote-btn" data-command="home">🏠 בית</button>
+                            <button class="remote-btn" data-command="info">ℹ️ מידע</button>
+                            <button class="remote-btn" data-command="settings">⚙️ הגדרות</button>
+                            <button class="remote-btn" data-command="exit">❌ יציאה</button>
+                        </div>
+
+                        <!-- כפתורים ספציפיים למכשיר -->
+                        <div id="deviceSpecificButtons" class="remote-device-specific"></div>
+                    </div>
                 </div>
             </section>
 
@@ -57,32 +129,6 @@
                     <button class="btn-secondary" onclick="importScenes()">📥 ייבא סצנות</button>
                 </div>
                 <div id="scenesList" class="devices-list"></div>
-            </section>
-
-            <!-- טמפלטים מוכנים -->
-            <section class="templates-section">
-                <h2>📋 טמפלטים מוכנים</h2>
-                <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
-                    <input type="text" id="templateSearch" placeholder="🔍 חיפוש טמפלט..." style="flex: 1; min-width: 200px; padding: 10px; border-radius: 8px; border: 2px solid #ddd;">
-                    <select id="templateCategoryFilter" style="padding: 10px; border-radius: 8px; border: 2px solid #ddd;">
-                        <option value="">כל הקטגוריות</option>
-                        <option value="tv">📺 טלוויזיות</option>
-                        <option value="ac">❄️ מזגנים</option>
-                        <option value="audio">🔊 מערכות שמע</option>
-                        <option value="light">💡 תאורה</option>
-                        <option value="streamer">📱 סטרימרים</option>
-                        <option value="camera">📷 מצלמות</option>
-                        <option value="fan">🌀 מאווררים</option>
-                        <option value="blinds">🪟 תריסים</option>
-                        <option value="door">🚪 דלתות</option>
-                        <option value="security">🔒 אבטחה</option>
-                        <option value="heater">🔥 תנורים</option>
-                        <option value="projector">📽️ מקרנים</option>
-                        <option value="smart_hub">🏠 Smart Hubs</option>
-                    </select>
-                    <button class="btn-primary" onclick="loadAllTemplates()">🔄 רענן טמפלטים</button>
-                </div>
-                <div id="templatesList" class="devices-list"></div>
             </section>
 
             <!-- סריקת IR -->
@@ -159,6 +205,32 @@
                         <div id="irConnectionStatus" class="status-message"></div>
                     </div>
                 </div>
+            </section>
+
+            <!-- טמפלטים מוכנים -->
+            <section class="templates-section">
+                <h2>📋 טמפלטים מוכנים</h2>
+                <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                    <input type="text" id="templateSearch" placeholder="🔍 חיפוש טמפלט..." style="flex: 1; min-width: 200px; padding: 10px; border-radius: 8px; border: 2px solid #ddd;">
+                    <select id="templateCategoryFilter" style="padding: 10px; border-radius: 8px; border: 2px solid #ddd;">
+                        <option value="">כל הקטגוריות</option>
+                        <option value="tv">📺 טלוויזיות</option>
+                        <option value="ac">❄️ מזגנים</option>
+                        <option value="audio">🔊 מערכות שמע</option>
+                        <option value="light">💡 תאורה</option>
+                        <option value="streamer">📱 סטרימרים</option>
+                        <option value="camera">📷 מצלמות</option>
+                        <option value="fan">🌀 מאווררים</option>
+                        <option value="blinds">🪟 תריסים</option>
+                        <option value="door">🚪 דלתות</option>
+                        <option value="security">🔒 אבטחה</option>
+                        <option value="heater">🔥 תנורים</option>
+                        <option value="projector">📽️ מקרנים</option>
+                        <option value="smart_hub">🏠 Smart Hubs</option>
+                    </select>
+                    <button class="btn-primary" onclick="loadAllTemplates()">🔄 רענן טמפלטים</button>
+                </div>
+                <div id="templatesList" class="devices-list"></div>
             </section>
         </div>
     </div>
@@ -243,7 +315,7 @@
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=2.1"></script>
 </body>
 </html>
 
