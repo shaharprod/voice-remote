@@ -33,95 +33,86 @@ document.addEventListener('DOMContentLoaded', () => {
     loadTemplates(); // הצגת טמפלטים
     setupVisualRemote(); // הגדרת השלט הרחוק הויזואלי
 
-    // וידוא שהמחוונים גלויים בעת טעינת הדף
-    setTimeout(() => {
+    // וידוא שהמחוונים גלויים בעת טעינת הדף - מספר פעמים
+    const ensureIndicatorsVisible = () => {
         const indicators = document.querySelector('.ir-indicators');
         const receiveIndicator = document.getElementById('irReceiveIndicator');
         const sendIndicator = document.getElementById('irSendIndicator');
 
         if (indicators) {
-            indicators.style.setProperty('display', 'flex', 'important');
-            indicators.style.setProperty('visibility', 'visible', 'important');
-            indicators.style.setProperty('opacity', '1', 'important');
+            indicators.style.cssText = 'display: flex !important; visibility: visible !important; opacity: 1 !important; position: relative !important; z-index: 10 !important;';
+            const computedStyle = window.getComputedStyle(indicators);
+            if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden') {
+                console.warn('מחוונים מוסתרים, מכריח הצגה...');
+                indicators.removeAttribute('style');
+                indicators.style.cssText = 'display: flex !important; visibility: visible !important; opacity: 1 !important; position: relative !important; z-index: 10 !important;';
+            }
         }
 
         if (receiveIndicator) {
-            receiveIndicator.style.setProperty('display', 'flex', 'important');
-            receiveIndicator.style.setProperty('visibility', 'visible', 'important');
-            receiveIndicator.style.setProperty('opacity', '1', 'important');
+            receiveIndicator.style.cssText = 'display: flex !important; visibility: visible !important; opacity: 1 !important;';
             const light = receiveIndicator.querySelector('.ir-indicator-light');
             if (light) {
-                light.style.setProperty('display', 'block', 'important');
-                light.style.setProperty('visibility', 'visible', 'important');
-                light.style.setProperty('opacity', '1', 'important');
+                light.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important;';
             }
         }
 
         if (sendIndicator) {
-            sendIndicator.style.setProperty('display', 'flex', 'important');
-            sendIndicator.style.setProperty('visibility', 'visible', 'important');
-            sendIndicator.style.setProperty('opacity', '1', 'important');
+            sendIndicator.style.cssText = 'display: flex !important; visibility: visible !important; opacity: 1 !important;';
             const light = sendIndicator.querySelector('.ir-indicator-light');
             if (light) {
-                light.style.setProperty('display', 'block', 'important');
-                light.style.setProperty('visibility', 'visible', 'important');
-                light.style.setProperty('opacity', '1', 'important');
+                light.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important;';
             }
         }
-    }, 100);
+    };
+
+    // וידוא מספר פעמים
+    setTimeout(ensureIndicatorsVisible, 50);
+    setTimeout(ensureIndicatorsVisible, 100);
+    setTimeout(ensureIndicatorsVisible, 200);
+    setTimeout(ensureIndicatorsVisible, 500);
 });
 
 // וידוא נוסף אחרי טעינה מלאה
 window.addEventListener('load', () => {
-    setTimeout(() => {
+    const ensureIndicatorsVisible = () => {
         const indicators = document.querySelector('.ir-indicators');
         const receiveIndicator = document.getElementById('irReceiveIndicator');
         const sendIndicator = document.getElementById('irSendIndicator');
 
         if (indicators) {
-            indicators.style.setProperty('display', 'flex', 'important');
-            indicators.style.setProperty('visibility', 'visible', 'important');
-            indicators.style.setProperty('opacity', '1', 'important');
-            indicators.style.setProperty('position', 'relative', 'important');
-            indicators.style.setProperty('z-index', '10', 'important');
+            indicators.style.cssText = 'display: flex !important; visibility: visible !important; opacity: 1 !important; position: relative !important; z-index: 10 !important;';
+            const computedStyle = window.getComputedStyle(indicators);
+            if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden' || computedStyle.opacity === '0') {
+                console.warn('מחוונים מוסתרים, מכריח הצגה...');
+                indicators.removeAttribute('style');
+                indicators.style.cssText = 'display: flex !important; visibility: visible !important; opacity: 1 !important; position: relative !important; z-index: 10 !important;';
+            }
         }
 
         if (receiveIndicator) {
-            receiveIndicator.style.setProperty('display', 'flex', 'important');
-            receiveIndicator.style.setProperty('visibility', 'visible', 'important');
-            receiveIndicator.style.setProperty('opacity', '1', 'important');
+            receiveIndicator.style.cssText = 'display: flex !important; visibility: visible !important; opacity: 1 !important;';
             const light = receiveIndicator.querySelector('.ir-indicator-light');
             if (light) {
-                light.style.setProperty('display', 'block', 'important');
-                light.style.setProperty('visibility', 'visible', 'important');
-                light.style.setProperty('opacity', '1', 'important');
+                light.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important;';
             }
         }
 
         if (sendIndicator) {
-            sendIndicator.style.setProperty('display', 'flex', 'important');
-            sendIndicator.style.setProperty('visibility', 'visible', 'important');
-            sendIndicator.style.setProperty('opacity', '1', 'important');
+            sendIndicator.style.cssText = 'display: flex !important; visibility: visible !important; opacity: 1 !important;';
             const light = sendIndicator.querySelector('.ir-indicator-light');
             if (light) {
-                light.style.setProperty('display', 'block', 'important');
-                light.style.setProperty('visibility', 'visible', 'important');
-                light.style.setProperty('opacity', '1', 'important');
+                light.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important;';
             }
         }
-    }, 200);
+    };
 
-    // וידוא נוסף אחרי 1 שנייה
-    setTimeout(() => {
-        const indicators = document.querySelector('.ir-indicators');
-        if (indicators) {
-            const computedStyle = window.getComputedStyle(indicators);
-            if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden') {
-                console.warn('מחוונים עדיין מוסתרים, מכריח הצגה...');
-                indicators.style.cssText = 'display: flex !important; visibility: visible !important; opacity: 1 !important; position: relative !important; z-index: 10 !important;';
-            }
-        }
-    }, 1000);
+    // וידוא מספר פעמים
+    setTimeout(ensureIndicatorsVisible, 100);
+    setTimeout(ensureIndicatorsVisible, 300);
+    setTimeout(ensureIndicatorsVisible, 500);
+    setTimeout(ensureIndicatorsVisible, 1000);
+    setTimeout(ensureIndicatorsVisible, 2000);
 });
 
 // אתחול זיהוי קול

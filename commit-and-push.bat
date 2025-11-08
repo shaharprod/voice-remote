@@ -30,7 +30,7 @@ echo ✅ קבצים נוספו
 echo.
 
 echo [3/6] יוצר commit...
-git commit -m "Fix IR indicators on GitHub Pages + NEON TV + cache-busting v2.5" --no-verify
+git commit -m "Fix IR indicators visibility on GitHub Pages - multiple checks + NEON TV + cache-busting v2.6" --no-verify
 if %errorlevel% neq 0 (
     echo ⚠️  אין שינויים חדשים או שגיאה ב-commit
     REM נמשיך גם אם אין שינויים
